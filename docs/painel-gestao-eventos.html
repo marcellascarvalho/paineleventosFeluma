@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Painel de Gestão de Eventos</title>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <script>
 /*!
  * html2canvas 1.4.1 <https://html2canvas.hertzen.com>
@@ -584,6 +585,15 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
 
   .toc-back{position:fixed; right:22px; bottom:22px; z-index:40; background:var(--navy); color:#fff; width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center; text-decoration:none; box-shadow:var(--shadow); font-size:1.1rem;}
 
+  .modal-overlay{position:fixed; inset:0; background:rgba(10,20,30,0.55); z-index:100; display:flex; align-items:center; justify-content:center; padding:20px;}
+  .modal-overlay.hidden{display:none;}
+  .modal-box{background:var(--paper); border-radius:14px; padding:26px 28px; max-width:480px; width:100%; box-shadow:0 20px 60px rgba(0,0,0,.35);}
+  .modal-box h3{margin-bottom:.3em;}
+  .modal-box p{font-size:.85rem; color:var(--ink-soft);}
+  .modal-box .field-row label{font-weight:700;}
+  .modal-actions{display:flex; gap:10px; justify-content:flex-end; margin-top:18px;}
+  .gdrive-status-line{font-size:.78rem; margin-top:10px; padding:8px 10px; border-radius:8px; background:var(--cream); color:var(--ink-soft);}
+
   /* ===== RELATÓRIO PARA PDF (fora da tela, capturado pelo html2pdf) ===== */
   #report-root{position:absolute; left:-99999px; top:0; width:794px; background:#fff; color:#1c2230; font-family:'Inter',sans-serif;}
   .rp-page{width:794px; min-height:1120px; padding:56px 54px 40px; page-break-after:always; position:relative;}
@@ -615,7 +625,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
   .rp-page-footer{position:absolute; bottom:22px; left:54px; right:54px; display:flex; justify-content:space-between; font-size:9.5px; color:#aab0c0; font-family:'JetBrains Mono',monospace; border-top:1px solid #eee; padding-top:8px;}
 
   @media print{
-    nav, .toolbar, .toc-back{display:none !important;}
+    nav, .toolbar, .toc-back, .modal-overlay{display:none !important;}
     body{background:#fff;}
     #report-root{display:none !important;}
     * {-webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; color-adjust:exact !important;}
@@ -644,6 +654,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
   <button class="tbtn" id="btn-import-trigger">⬆ Importar backup</button>
   <input type="file" id="file-import" accept="application/json">
   <button class="tbtn primary" id="btn-pdf">📄 Baixar relatório em PDF</button>
+  <button class="tbtn" id="btn-gdrive-config" title="Configurar envio automático para o Google Drive">☁ Google Drive</button>
   <span id="pdf-status" style="font-size:.72rem; color:#9fabc4;"></span>
   <button class="tbtn danger" id="btn-reset">Limpar tudo</button>
   <div class="progress-mini">
@@ -862,6 +873,27 @@ Atenciosamente,</textarea></div>
 </footer>
 
 <a href="#dados" class="toc-back" title="Voltar ao topo">↑</a>
+
+<!-- ===== CONFIGURAÇÃO GOOGLE DRIVE ===== -->
+<div class="modal-overlay hidden" id="gdrive-modal">
+  <div class="modal-box">
+    <h3>Salvar PDF automaticamente no Google Drive</h3>
+    <p>Ao clicar em "Baixar relatório em PDF", além do download, o painel também envia uma cópia para a pasta do Drive configurada abaixo. É necessário um Client ID OAuth do Google Cloud autorizado para o endereço onde este painel está hospedado (não funciona abrindo o arquivo direto do computador, só em http/https).</p>
+    <div class="field-row">
+      <label>Client ID OAuth (Google Cloud Console)</label>
+      <input class="field-input" type="text" id="gdrive-client-id" placeholder="xxxxxxxxxx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com">
+    </div>
+    <div class="field-row">
+      <label>ID da pasta no Drive</label>
+      <input class="field-input" type="text" id="gdrive-folder-id" placeholder="ID da pasta de destino">
+    </div>
+    <div class="gdrive-status-line" id="gdrive-modal-status"></div>
+    <div class="modal-actions">
+      <button class="tbtn" id="gdrive-modal-cancel">Fechar</button>
+      <button class="tbtn primary" id="gdrive-modal-save">Salvar configuração</button>
+    </div>
+  </div>
+</div>
 
 <!-- ===== RELATÓRIO PARA PDF (invisível na tela, só usado na exportação) ===== -->
 <div id="report-root">
@@ -1497,6 +1529,91 @@ Atenciosamente,</textarea></div>
     });
   }
 
+  // ===================== GOOGLE DRIVE (envio automático do PDF) =====================
+  const GDRIVE_CLIENT_KEY = 'gdrive-client-id';
+  const GDRIVE_FOLDER_KEY = 'gdrive-folder-id';
+  let gdriveTokenClient = null;
+  let gdriveAccessToken = null;
+
+  function gdriveIsHosted(){
+    return location.protocol === 'http:' || location.protocol === 'https:';
+  }
+  function gdriveConfig(){
+    return {
+      clientId: localStorage.getItem(GDRIVE_CLIENT_KEY) || '',
+      folderId: localStorage.getItem(GDRIVE_FOLDER_KEY) || ''
+    };
+  }
+  function ensureTokenClient(clientId){
+    if(gdriveTokenClient && gdriveTokenClient.__clientId === clientId) return gdriveTokenClient;
+    if(!window.google || !google.accounts || !google.accounts.oauth2){
+      throw new Error('Biblioteca do Google (accounts.google.com/gsi/client) não carregou — verifique sua conexão.');
+    }
+    gdriveTokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: clientId,
+      scope: 'https://www.googleapis.com/auth/drive.file',
+      callback: ()=>{}
+    });
+    gdriveTokenClient.__clientId = clientId;
+    return gdriveTokenClient;
+  }
+  function getGDriveAccessToken(clientId){
+    return new Promise((resolve, reject)=>{
+      try{
+        const client = ensureTokenClient(clientId);
+        client.callback = (resp)=>{
+          if(resp.error){ reject(new Error(resp.error)); return; }
+          gdriveAccessToken = resp.access_token;
+          resolve(gdriveAccessToken);
+        };
+        client.requestAccessToken({prompt: gdriveAccessToken ? '' : 'consent'});
+      }catch(err){ reject(err); }
+    });
+  }
+  async function uploadPdfToDrive(pdfBlob, filename){
+    const cfg = gdriveConfig();
+    if(!cfg.clientId) return {skipped:true};
+    if(!gdriveIsHosted()){
+      throw new Error('Só funciona com o painel hospedado em http/https, não abrindo o arquivo local.');
+    }
+    const token = await getGDriveAccessToken(cfg.clientId);
+    const metadata = { name: filename };
+    if(cfg.folderId) metadata.parents = [cfg.folderId];
+    const form = new FormData();
+    form.append('metadata', new Blob([JSON.stringify(metadata)], {type:'application/json'}));
+    form.append('file', pdfBlob);
+    const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + token },
+      body: form
+    });
+    if(!res.ok){
+      const detail = await res.text().catch(()=> '');
+      throw new Error('Falha ao enviar ao Drive (HTTP '+res.status+'). '+detail.slice(0,150));
+    }
+    return res.json();
+  }
+
+  document.getElementById('btn-gdrive-config').addEventListener('click', ()=>{
+    const cfg = gdriveConfig();
+    document.getElementById('gdrive-client-id').value = cfg.clientId;
+    document.getElementById('gdrive-folder-id').value = cfg.folderId;
+    document.getElementById('gdrive-modal-status').textContent = gdriveIsHosted()
+      ? ''
+      : 'Aviso: este arquivo está aberto localmente (file://). O envio automático só funciona quando o painel está hospedado em um endereço http/https.';
+    document.getElementById('gdrive-modal').classList.remove('hidden');
+  });
+  document.getElementById('gdrive-modal-cancel').addEventListener('click', ()=>{
+    document.getElementById('gdrive-modal').classList.add('hidden');
+  });
+  document.getElementById('gdrive-modal-save').addEventListener('click', ()=>{
+    localStorage.setItem(GDRIVE_CLIENT_KEY, document.getElementById('gdrive-client-id').value.trim());
+    localStorage.setItem(GDRIVE_FOLDER_KEY, document.getElementById('gdrive-folder-id').value.trim());
+    gdriveTokenClient = null;
+    gdriveAccessToken = null;
+    document.getElementById('gdrive-modal-status').textContent = 'Configuração salva neste navegador.';
+  });
+
   async function generatePdf(){
     const JsPDFCtor = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
     if(typeof html2canvas === 'undefined' || !JsPDFCtor){
@@ -1520,8 +1637,27 @@ Atenciosamente,</textarea></div>
     const eventSlug = (val('evento-nome')||'evento').trim().toLowerCase()
       .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
       .replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'') || 'evento';
-    pdf.save('relatorio-'+eventSlug+'.pdf');
-    pdfStatus('PDF baixado com sucesso.', 5000);
+    const filename = 'relatorio-'+eventSlug+'.pdf';
+    const pdfBlob = pdf.output('blob');
+
+    const dlUrl = URL.createObjectURL(pdfBlob);
+    const a = document.createElement('a');
+    a.href = dlUrl; a.download = filename;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(dlUrl);
+
+    if(gdriveConfig().clientId){
+      pdfStatus('PDF baixado. Enviando c\u00f3pia para o Google Drive...', 0);
+      try{
+        await uploadPdfToDrive(pdfBlob, filename);
+        pdfStatus('PDF baixado e salvo no Google Drive.', 6000);
+      }catch(err){
+        console.error(err);
+        pdfStatus('PDF baixado, mas falhou ao salvar no Drive: ' + (err.message || 'erro desconhecido'), 9000);
+      }
+    } else {
+      pdfStatus('PDF baixado com sucesso. (Clique em "\u2601 Google Drive" para ativar o envio autom\u00e1tico.)', 6000);
+    }
   }
 
   document.getElementById('btn-pdf').addEventListener('click', ()=>{
