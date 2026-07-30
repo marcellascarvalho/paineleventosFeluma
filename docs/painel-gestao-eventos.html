@@ -889,6 +889,7 @@ Atenciosamente,</textarea></div>
     </div>
     <div class="gdrive-status-line" id="gdrive-modal-status"></div>
     <div class="modal-actions">
+      <button class="tbtn" id="gdrive-modal-switch-account" title="Force a escolha de conta Google na próxima autorização">Trocar conta Google</button>
       <button class="tbtn" id="gdrive-modal-cancel">Fechar</button>
       <button class="tbtn primary" id="gdrive-modal-save">Salvar configuração</button>
     </div>
@@ -1566,7 +1567,7 @@ Atenciosamente,</textarea></div>
           gdriveAccessToken = resp.access_token;
           resolve(gdriveAccessToken);
         };
-        client.requestAccessToken({prompt: gdriveAccessToken ? '' : 'consent'});
+        client.requestAccessToken({prompt: gdriveAccessToken ? '' : 'select_account consent'});
       }catch(err){ reject(err); }
     });
   }
@@ -1605,6 +1606,11 @@ Atenciosamente,</textarea></div>
   });
   document.getElementById('gdrive-modal-cancel').addEventListener('click', ()=>{
     document.getElementById('gdrive-modal').classList.add('hidden');
+  });
+  document.getElementById('gdrive-modal-switch-account').addEventListener('click', ()=>{
+    gdriveTokenClient = null;
+    gdriveAccessToken = null;
+    document.getElementById('gdrive-modal-status').textContent = 'Pronto: na próxima vez que clicar em "Baixar relatório em PDF", o Google vai pedir para escolher a conta novamente.';
   });
   document.getElementById('gdrive-modal-save').addEventListener('click', ()=>{
     localStorage.setItem(GDRIVE_CLIENT_KEY, document.getElementById('gdrive-client-id').value.trim());
