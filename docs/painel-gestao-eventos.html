@@ -1533,8 +1533,9 @@ Atenciosamente,</textarea></div>
   // ===================== GOOGLE DRIVE (envio automático do PDF) =====================
   const GDRIVE_CLIENT_KEY = 'gdrive-client-id';
   const GDRIVE_FOLDER_KEY = 'gdrive-folder-id';
+  const GDRIVE_TOKEN_CACHE_KEY = 'gdrive-token-cache';
   let gdriveTokenClient = null;
-  let gdriveAccessToken = null;
+  let gdriveForceAccountPicker = false;
 
   function gdriveIsHosted(){
     return location.protocol === 'http:' || location.protocol === 'https:';
@@ -1544,6 +1545,24 @@ Atenciosamente,</textarea></div>
       clientId: localStorage.getItem(GDRIVE_CLIENT_KEY) || '',
       folderId: localStorage.getItem(GDRIVE_FOLDER_KEY) || ''
     };
+  }
+  function loadCachedToken(){
+    try{
+      const cached = JSON.parse(localStorage.getItem(GDRIVE_TOKEN_CACHE_KEY) || 'null');
+      if(cached && cached.access_token && cached.expires_at > Date.now() + 30000) return cached.access_token;
+    }catch(e){}
+    return null;
+  }
+  function saveCachedToken(accessToken, expiresInSeconds){
+    try{
+      localStorage.setItem(GDRIVE_TOKEN_CACHE_KEY, JSON.stringify({
+        access_token: accessToken,
+        expires_at: Date.now() + (expiresInSeconds*1000)
+      }));
+    }catch(e){}
+  }
+  function clearCachedToken(){
+    try{ localStorage.removeItem(GDRIVE_TOKEN_CACHE_KEY); }catch(e){}
   }
   function ensureTokenClient(clientId){
     if(gdriveTokenClient && gdriveTokenClient.__clientId === clientId) return gdriveTokenClient;
@@ -1559,15 +1578,21 @@ Atenciosamente,</textarea></div>
     return gdriveTokenClient;
   }
   function getGDriveAccessToken(clientId){
+    const cached = loadCachedToken();
+    if(cached && !gdriveForceAccountPicker) return Promise.resolve(cached);
     return new Promise((resolve, reject)=>{
       try{
         const client = ensureTokenClient(clientId);
         client.callback = (resp)=>{
           if(resp.error){ reject(new Error(resp.error)); return; }
-          gdriveAccessToken = resp.access_token;
-          resolve(gdriveAccessToken);
+          saveCachedToken(resp.access_token, resp.expires_in || 3600);
+          gdriveForceAccountPicker = false;
+          resolve(resp.access_token);
         };
-        client.requestAccessToken({prompt: gdriveAccessToken ? '' : 'select_account consent'});
+        // Sem token válido em cache: tenta silencioso (prompt vazio) reaproveitando a sessão
+        // já autorizada; só força a tela de escolha de conta quando pedido explicitamente
+        // (botão "Trocar conta Google") ou na toda primeira vez deste navegador.
+        client.requestAccessToken({prompt: gdriveForceAccountPicker ? 'select_account consent' : ''});
       }catch(err){ reject(err); }
     });
   }
@@ -1608,15 +1633,14 @@ Atenciosamente,</textarea></div>
     document.getElementById('gdrive-modal').classList.add('hidden');
   });
   document.getElementById('gdrive-modal-switch-account').addEventListener('click', ()=>{
-    gdriveTokenClient = null;
-    gdriveAccessToken = null;
+    clearCachedToken();
+    gdriveForceAccountPicker = true;
     document.getElementById('gdrive-modal-status').textContent = 'Pronto: na próxima vez que clicar em "Baixar relatório em PDF", o Google vai pedir para escolher a conta novamente.';
   });
   document.getElementById('gdrive-modal-save').addEventListener('click', ()=>{
     localStorage.setItem(GDRIVE_CLIENT_KEY, document.getElementById('gdrive-client-id').value.trim());
     localStorage.setItem(GDRIVE_FOLDER_KEY, document.getElementById('gdrive-folder-id').value.trim());
-    gdriveTokenClient = null;
-    gdriveAccessToken = null;
+    clearCachedToken();
     document.getElementById('gdrive-modal-status').textContent = 'Configuração salva neste navegador.';
   });
 
