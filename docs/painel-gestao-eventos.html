@@ -617,6 +617,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
   <div class="hero-meta">
     <div class="meta-chip"><div class="k">Evento</div><input class="field-input" type="text" data-key="evento-nome" placeholder="Nome do evento"></div>
     <div class="meta-chip"><div class="k">Data</div><input class="field-input" type="text" data-key="evento-data" placeholder="dd/mm/aaaa"></div>
+    <div class="meta-chip"><div class="k">Horário</div><input class="field-input" type="text" data-key="evento-horario" placeholder="hh:mm"></div>
     <div class="meta-chip"><div class="k">Local</div><input class="field-input" type="text" data-key="evento-local" placeholder="Auditório / Teatro / Local"></div>
     <div class="meta-chip"><div class="k">Responsável</div><input class="field-input" type="text" data-key="evento-responsavel" placeholder="Nome do coordenador"></div>
   </div>
@@ -1509,9 +1510,10 @@ Atenciosamente,</textarea></div>
 
     let metaY = 160 + nameLines.length*34 + 40;
     const metaItems = [
-      ['Data do evento', data.eventDate], ['Local', data.eventLocal],
-      ['Responsável', data.eventResp], ['Tipo de evento/ação', data.eventTipo],
-      ['Público esperado', data.eventPublico], ['Montagem / Follow-up', data.eventDatas]
+      ['Data do evento', data.eventDate], ['Horário', data.eventHorario],
+      ['Local', data.eventLocal], ['Responsável', data.eventResp],
+      ['Tipo de evento/ação', data.eventTipo], ['Público esperado', data.eventPublico],
+      ['Montagem / Follow-up', data.eventDatas]
     ];
     const colW = (PDF_CONTENT_W-30)/2;
     metaItems.forEach((item, i)=>{
@@ -1668,6 +1670,7 @@ Atenciosamente,</textarea></div>
     const data = {
       eventName: eventName,
       eventDate: val('evento-data') || '—',
+      eventHorario: val('evento-horario') || '—',
       eventLocal: val('evento-local') || '—',
       eventResp: val('evento-responsavel') || '—',
       eventTipo: val('evento-tipo') || '—',
