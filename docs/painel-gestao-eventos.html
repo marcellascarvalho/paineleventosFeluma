@@ -549,8 +549,19 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
   .tpl-card{background:var(--cream); border:1px dashed var(--line);}
   .table-scroll{overflow-x:auto;}
 
-  .doc-grid{grid-template-columns:repeat(auto-fill,minmax(230px,1fr));}
-  .doc-num{font-family:'JetBrains Mono',monospace; font-size:.72rem; color:var(--gold); font-weight:700; letter-spacing:.05em;}
+  .doc-num{font-family:'JetBrains Mono',monospace; font-size:.72rem; color:var(--gold); font-weight:700; letter-spacing:.05em; flex-shrink:0; min-width:56px;}
+
+  .kit-row{display:flex; align-items:center; gap:14px; padding:16px 0; border-bottom:1px solid var(--line); flex-wrap:wrap;}
+  .kit-row:last-child{border-bottom:none;}
+  .kit-row .kit-name{flex:1 1 220px; min-width:180px;}
+  .kit-row .stat-select{flex-shrink:0;}
+  .kit-attach{display:flex; align-items:center; gap:10px; flex-wrap:wrap; flex:1 1 320px;}
+  .kit-file-input{display:none;}
+  .kit-file-info{font-size:.8rem; color:var(--ink-soft); display:flex; align-items:center; gap:9px; background:var(--cream); padding:6px 12px; border-radius:8px; max-width:100%;}
+  .kit-file-info a{color:var(--clinical); text-decoration:none; font-weight:700;}
+  .kit-file-info a:hover{text-decoration:underline;}
+  .kit-file-remove{color:var(--red); cursor:pointer; font-weight:700; font-size:.85rem; flex-shrink:0;}
+  .kit-row .kit-remove{flex-shrink:0;}
 
   footer{background:var(--navy); color:#9fabc4; padding:38px 8vw; font-size:.85rem; display:flex; justify-content:space-between; flex-wrap:wrap; gap:12px;}
   footer strong{color:var(--teal-light);}
@@ -616,8 +627,10 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
   <p class="sub">Painel único para acompanhar cronograma, checklist (antes/durante/depois), registro de ações e orçamento com fornecedores — inclusive pedidos de cotação por e-mail e um relatório em PDF pronto para apresentar aos gestores.</p>
   <div class="hero-meta">
     <div class="meta-chip"><div class="k">Evento</div><input class="field-input" type="text" data-key="evento-nome" placeholder="Nome do evento"></div>
-    <div class="meta-chip"><div class="k">Data</div><input class="field-input" type="text" data-key="evento-data" placeholder="dd/mm/aaaa"></div>
-    <div class="meta-chip"><div class="k">Horário</div><input class="field-input" type="text" data-key="evento-horario" placeholder="hh:mm"></div>
+    <div class="meta-chip"><div class="k">Data de início</div><input class="field-input" type="text" data-key="evento-data-inicio" placeholder="dd/mm/aaaa"></div>
+    <div class="meta-chip"><div class="k">Data de término</div><input class="field-input" type="text" data-key="evento-data-fim" placeholder="dd/mm/aaaa"></div>
+    <div class="meta-chip"><div class="k">Horário de início</div><input class="field-input" type="text" data-key="evento-horario-inicio" placeholder="hh:mm"></div>
+    <div class="meta-chip"><div class="k">Horário de término</div><input class="field-input" type="text" data-key="evento-horario-fim" placeholder="hh:mm"></div>
     <div class="meta-chip"><div class="k">Local</div><input class="field-input" type="text" data-key="evento-local" placeholder="Auditório / Teatro / Local"></div>
     <div class="meta-chip"><div class="k">Responsável</div><input class="field-input" type="text" data-key="evento-responsavel" placeholder="Nome do coordenador"></div>
   </div>
@@ -762,13 +775,9 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
     <div class="field-row"><label>Assunto</label><input class="field-input" type="text" data-key="orc-tpl-subject" id="orc-tpl-subject" value="Solicitação de cotação — {evento}"></div>
     <div class="field-row"><label>Corpo</label><textarea class="field-textarea" data-key="orc-tpl-body" id="orc-tpl-body" style="min-height:130px;">Olá,
 
-Estamos organizando o evento {evento} e gostaríamos de solicitar uma cotação para: {item}.
+Solicitamos orçamento para {item}, considerando o Termo de Referência anexo.
 
-Poderia nos enviar valores, condições de pagamento e disponibilidade de data?
-
-Ficamos no aguardo do retorno.
-
-Atenciosamente,</textarea></div>
+Ficamos no aguardo do retorno.</textarea></div>
   </div>
 
   <div class="card">
@@ -795,13 +804,11 @@ Atenciosamente,</textarea></div>
   <div class="section-head">
     <span class="eyebrow">08 · Entregáveis</span>
     <h2>Kit de documentos</h2>
-    <p>Inventário de documentos do projeto, com status.</p>
+    <p>Inventário de documentos do projeto — edite o nome, o status e anexe o arquivo (Word, Excel, PowerPoint ou PDF) de cada um. Os anexos ficam salvos neste navegador junto com o restante do painel.</p>
   </div>
-  <div class="grid grid-4 doc-grid">
-    <div class="card"><span class="doc-num">DOC-01</span><h3 style="font-size:1rem;">Protocolo de cerimonial</h3><select class="stat-select" data-key="doc-1"><option value="pending" selected>Não iniciado</option><option value="progress">Em elaboração</option><option value="done">Concluído</option></select></div>
-    <div class="card"><span class="doc-num">DOC-02</span><h3 style="font-size:1rem;">Termo de responsabilidade</h3><select class="stat-select" data-key="doc-2"><option value="pending" selected>Não iniciado</option><option value="progress">Em elaboração</option><option value="done">Concluído</option></select></div>
-    <div class="card"><span class="doc-num">DOC-03</span><h3 style="font-size:1rem;">Run of show</h3><select class="stat-select" data-key="doc-3"><option value="pending" selected>Não iniciado</option><option value="progress">Em elaboração</option><option value="done">Concluído</option></select></div>
-    <div class="card"><span class="doc-num">DOC-04</span><h3 style="font-size:1rem;">Release de imprensa</h3><select class="stat-select" data-key="doc-4"><option value="pending" selected>Não iniciado</option><option value="progress">Em elaboração</option><option value="done">Concluído</option></select></div>
+  <div class="card">
+    <div id="kit-list"></div>
+    <button class="tbtn chk-add-btn" id="kit-add">+ Adicionar documento</button>
   </div>
 
   <div class="card" style="margin-top:26px; background:var(--navy); color:#e9e4d6; border:none;">
@@ -855,6 +862,28 @@ Atenciosamente,</textarea></div>
   </div>
 </div>
 
+<!-- ===== MENSAGEM DE COTAÇÃO (para copiar e colar) ===== -->
+<div class="modal-overlay hidden" id="quote-modal">
+  <div class="modal-box" style="max-width:560px;">
+    <h3>Mensagem para o fornecedor</h3>
+    <p>Copie o texto abaixo e cole no e-mail, WhatsApp ou onde for enviar o pedido de cotação.</p>
+    <div class="field-row">
+      <label>Assunto</label>
+      <input class="field-input" type="text" id="quote-subject" readonly>
+    </div>
+    <div class="field-row">
+      <label>Mensagem</label>
+      <textarea class="field-textarea" id="quote-body" style="min-height:170px;" readonly></textarea>
+    </div>
+    <div class="gdrive-status-line" id="quote-modal-status"></div>
+    <div class="modal-actions">
+      <button class="tbtn" id="quote-modal-mailto">✉ Abrir no e-mail</button>
+      <button class="tbtn" id="quote-modal-cancel">Fechar</button>
+      <button class="tbtn primary" id="quote-modal-copy">📋 Copiar mensagem</button>
+    </div>
+  </div>
+</div>
+
 <script>
 (function(){
   const STORE_KEY = 'painel_gestao_eventos_v1'; // TROCAR por chave única por evento, ex: 'evento_colacao_2026_v1'
@@ -892,6 +921,12 @@ Atenciosamente,</textarea></div>
   // Remove emojis/símbolos que as fontes padrão do PDF não sabem desenhar (ex: 🟢 nas fases do cronograma).
   function stripEmoji(s){
     return (s||'').replace(/[\u{1F000}-\u{1FFFF}\u{2190}-\u{2BFF}\u{FE0F}\u{200D}]/gu, '').trim();
+  }
+  // Junta início/fim (data ou horário) num só texto: "20/12/2026" ou "20/12/2026 a 22/12/2026".
+  function fmtRange(a, b, sep){
+    a = (a||'').trim(); b = (b||'').trim();
+    if(a && b) return a===b ? a : a+' '+sep+' '+b;
+    return a || b || '—';
   }
 
   // Selects (status dropdowns) estáticos
@@ -1115,7 +1150,7 @@ Atenciosamente,</textarea></div>
     const snapshot = {
       id: 'arq-' + Date.now(),
       eventName: eventName,
-      eventDate: store['evento-data'] || '',
+      eventDate: fmtRange(store['evento-data-inicio'], store['evento-data-fim'], 'a').replace('—',''),
       archivedAt: new Date().toISOString(),
       data: JSON.parse(JSON.stringify(store))
     };
@@ -1339,7 +1374,7 @@ Atenciosamente,</textarea></div>
           '<option value="attention">Cotação recebida</option>'+
           '<option value="done">Fechado</option>'+
         '</select></td>'+
-        '<td class="dyn-actions"><button class="tbtn orc-send" title="Abrir e-mail de cotação">✉ Pedir cotação</button><button class="tbtn danger orc-remove" title="Remover item">✕</button></td>';
+        '<td class="dyn-actions"><button class="tbtn orc-send" title="Gerar mensagem de cotação para copiar">✉ Pedir cotação</button><button class="tbtn danger orc-remove" title="Remover item">✕</button></td>';
 
       const selStatus = tr.querySelector('.orc-status');
       selStatus.value = row.status || 'pending';
@@ -1372,9 +1407,11 @@ Atenciosamente,</textarea></div>
         const itemName = row.item || '[item]';
         const subject = subjectTpl.split('{evento}').join(eventName).split('{item}').join(itemName);
         const body = bodyTpl.split('{evento}').join(eventName).split('{item}').join(itemName);
-        const email = row.email || '';
-        const mailto = 'mailto:'+encodeURIComponent(email).replace(/%40/g,'@')+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
-        window.location.href = mailto;
+        document.getElementById('quote-subject').value = subject;
+        document.getElementById('quote-body').value = body;
+        document.getElementById('quote-modal-status').textContent = '';
+        window.__quoteEmail = row.email || '';
+        document.getElementById('quote-modal').classList.remove('hidden');
         if(row.status === 'pending'){
           row.status = 'progress';
           persistOrc();
@@ -1393,6 +1430,173 @@ Atenciosamente,</textarea></div>
   });
   renderOrcRows();
   recalcOrc();
+
+  // Modal de mensagem de cotação (copiar/colar), aberto pelo botão "Pedir cotação" de cada linha do orçamento.
+  document.getElementById('quote-modal-cancel').addEventListener('click', ()=>{
+    document.getElementById('quote-modal').classList.add('hidden');
+  });
+  document.getElementById('quote-modal-copy').addEventListener('click', async ()=>{
+    const subject = document.getElementById('quote-subject').value;
+    const body = document.getElementById('quote-body').value;
+    const fullText = 'Assunto: '+subject+'\n\n'+body;
+    const statusEl = document.getElementById('quote-modal-status');
+    try{
+      await navigator.clipboard.writeText(fullText);
+      statusEl.textContent = 'Mensagem copiada!';
+    }catch(err){
+      const ta = document.getElementById('quote-body');
+      ta.focus(); ta.select();
+      try{
+        document.execCommand('copy');
+        statusEl.textContent = 'Mensagem copiada!';
+      }catch(err2){
+        statusEl.textContent = 'Não foi possível copiar automaticamente — selecione o texto acima e copie manualmente (Ctrl+C).';
+      }
+    }
+  });
+  document.getElementById('quote-modal-mailto').addEventListener('click', ()=>{
+    const subject = document.getElementById('quote-subject').value;
+    const body = document.getElementById('quote-body').value;
+    const email = window.__quoteEmail || '';
+    const mailto = 'mailto:'+encodeURIComponent(email).replace(/%40/g,'@')+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
+    window.location.href = mailto;
+  });
+
+  // ===================== KIT DE DOCUMENTOS =====================
+  const KIT_KEY = 'kit-items';
+  let kitItems = store[KIT_KEY];
+  if(!kitItems){
+    // Migra status antigos (doc-1..doc-4, quando existiam como selects fixos) e acrescenta o Termo de Referência.
+    kitItems = [
+      {id:'doc-1', label:'Protocolo de cerimonial', status: store['doc-1']||'pending'},
+      {id:'doc-2', label:'Termo de responsabilidade', status: store['doc-2']||'pending'},
+      {id:'doc-3', label:'Run of show', status: store['doc-3']||'pending'},
+      {id:'doc-4', label:'Release de imprensa', status: store['doc-4']||'pending'},
+      {id:'doc-5', label:'Termo de Referência', status:'pending'}
+    ];
+  }
+  let kitCounter = store['kit-counter'] || kitItems.length;
+
+  function kitDocStatusLabel(v){
+    return {pending:'Não iniciado', progress:'Em elaboração', done:'Concluído'}[v] || v;
+  }
+  function persistKit(){
+    store[KIT_KEY] = kitItems;
+    store['kit-counter'] = kitCounter;
+    saveStore();
+  }
+  function fmtFileSize(bytes){
+    if(bytes < 1024) return bytes + ' B';
+    if(bytes < 1024*1024) return Math.round(bytes/1024) + ' KB';
+    return (bytes/(1024*1024)).toFixed(1) + ' MB';
+  }
+  const KIT_FILE_ACCEPT = '.doc,.docx,.xls,.xlsx,.ppt,.pptx,.pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/pdf';
+  const KIT_MAX_FILE_BYTES = 4*1024*1024;
+
+  function renderKitList(){
+    const container = document.getElementById('kit-list');
+    container.innerHTML = '';
+    if(kitItems.length === 0){
+      container.innerHTML = '<p style="color:var(--ink-soft); font-size:.85rem; margin:8px 0;">Nenhum documento cadastrado ainda.</p>';
+      return;
+    }
+    kitItems.forEach((item, idx)=>{
+      const row = document.createElement('div');
+      row.className = 'kit-row';
+      const docNum = 'DOC-' + String(idx+1).padStart(2,'0');
+      row.innerHTML =
+        '<span class="doc-num">'+docNum+'</span>'+
+        '<input class="field-input kit-name" type="text" value="'+escapeHtml(item.label)+'" placeholder="Nome do documento">'+
+        '<select class="stat-select">'+
+          '<option value="pending">Não iniciado</option>'+
+          '<option value="progress">Em elaboração</option>'+
+          '<option value="done">Concluído</option>'+
+        '</select>'+
+        '<div class="kit-attach">'+
+          '<input type="file" class="kit-file-input" accept="'+KIT_FILE_ACCEPT+'">'+
+          '<button class="tbtn kit-attach-btn" type="button">📎 Anexar arquivo</button>'+
+          '<span class="kit-file-info"></span>'+
+        '</div>'+
+        '<button class="tbtn danger kit-remove" title="Remover documento">✕</button>';
+
+      const sel = row.querySelector('.stat-select');
+      sel.value = item.status || 'pending';
+      styleSelect(sel);
+      container.appendChild(row);
+
+      row.querySelector('.kit-name').addEventListener('input', (e)=>{
+        item.label = e.target.value;
+        persistKit();
+      });
+      sel.addEventListener('change', (e)=>{
+        item.status = e.target.value;
+        styleSelect(e.target);
+        persistKit();
+      });
+      row.querySelector('.kit-remove').addEventListener('click', ()=>{
+        kitItems = kitItems.filter(i=>i.id!==item.id);
+        persistKit();
+        renderKitList();
+      });
+
+      const fileInfo = row.querySelector('.kit-file-info');
+      function renderFileInfo(){
+        if(item.fileName){
+          fileInfo.style.display = 'flex';
+          fileInfo.innerHTML =
+            '<a href="'+item.fileData+'" download="'+escapeHtml(item.fileName)+'">📄 '+escapeHtml(item.fileName)+'</a>'+
+            '<span>'+fmtFileSize(item.fileSize||0)+'</span>'+
+            '<span class="kit-file-remove" title="Remover anexo">✕</span>';
+          fileInfo.querySelector('.kit-file-remove').addEventListener('click', ()=>{
+            delete item.fileName; delete item.fileData; delete item.fileSize;
+            persistKit();
+            renderFileInfo();
+          });
+        } else {
+          fileInfo.style.display = 'none';
+          fileInfo.innerHTML = '';
+        }
+      }
+      renderFileInfo();
+
+      const fileInput = row.querySelector('.kit-file-input');
+      row.querySelector('.kit-attach-btn').addEventListener('click', ()=> fileInput.click());
+      fileInput.addEventListener('change', (e)=>{
+        const file = e.target.files[0];
+        if(!file) return;
+        if(file.size > KIT_MAX_FILE_BYTES){
+          alert('Arquivo muito grande (' + fmtFileSize(file.size) + '). Para não estourar o espaço de armazenamento do navegador, anexe arquivos de até ' + fmtFileSize(KIT_MAX_FILE_BYTES) + '.');
+          fileInput.value = '';
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = ()=>{
+          const prev = {fileName:item.fileName, fileData:item.fileData, fileSize:item.fileSize};
+          item.fileName = file.name;
+          item.fileData = reader.result;
+          item.fileSize = file.size;
+          store[KIT_KEY] = kitItems;
+          try{
+            localStorage.setItem(STORE_KEY, JSON.stringify(store));
+            renderFileInfo();
+          }catch(err){
+            item.fileName = prev.fileName; item.fileData = prev.fileData; item.fileSize = prev.fileSize;
+            alert('Não foi possível salvar o anexo — o espaço de armazenamento deste navegador está cheio. Remova algum anexo antigo, use um arquivo menor, ou exporte o backup em JSON antes de continuar.');
+          }
+        };
+        reader.readAsDataURL(file);
+        fileInput.value = '';
+      });
+    });
+  }
+  document.getElementById('kit-add').addEventListener('click', ()=>{
+    kitCounter++;
+    kitItems.push({id:'doc-x'+kitCounter, label:'', status:'pending'});
+    persistKit();
+    renderKitList();
+  });
+  persistKit();
+  renderKitList();
 
   // ===================== RELATÓRIO EM PDF =====================
   function pdfStatus(msg, ms){
@@ -1669,8 +1873,8 @@ Atenciosamente,</textarea></div>
     const eventName = val('evento-nome') || '[Nome do evento]';
     const data = {
       eventName: eventName,
-      eventDate: val('evento-data') || '—',
-      eventHorario: val('evento-horario') || '—',
+      eventDate: fmtRange(val('evento-data-inicio'), val('evento-data-fim'), 'a'),
+      eventHorario: fmtRange(val('evento-horario-inicio'), val('evento-horario-fim'), 'às'),
       eventLocal: val('evento-local') || '—',
       eventResp: val('evento-responsavel') || '—',
       eventTipo: val('evento-tipo') || '—',
@@ -1802,13 +2006,12 @@ Atenciosamente,</textarea></div>
     pdf.addPage();
     pdfHeaderStrip(pdf, eventName, 'Kit de documentos');
     y = pdfSectionTitle(pdf, 'Kit de documentos', 70);
-    const kitRows = Array.from(document.querySelectorAll('#kit select.stat-select[data-key]')).map(sel=>{
-      const label = sel.closest('.card').querySelector('h3').textContent;
-      return [label, sel.options[sel.selectedIndex].text];
-    });
+    const kitRows = kitItems.length ? kitItems.map(item=>[
+      item.label || '(sem nome)', kitDocStatusLabel(item.status), item.fileName ? item.fileName : 'Sem anexo'
+    ]) : [['Nenhum documento cadastrado ainda.','','']];
     pdfDrawTable(pdf, {
       startY:y, eventName, pageLabel:'Kit de documentos',
-      columns:[{label:'Documento', width:PDF_CONTENT_W-150},{label:'Status', width:150}],
+      columns:[{label:'Documento', width:PDF_CONTENT_W-260},{label:'Status', width:110},{label:'Anexo', width:150}],
       rows: kitRows
     });
     pdfFooter(pdf, eventName, 'Kit de documentos');
