@@ -772,7 +772,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
   <div class="card tpl-card" style="margin-bottom:22px;">
     <h4>Modelo do e-mail de cotação</h4>
     <p style="font-size:.82rem; color:var(--ink-soft); margin-top:0;">Use <code>{evento}</code> e <code>{item}</code> como variáveis — elas são substituídas automaticamente pelos dados de cada linha.</p>
-    <div class="field-row"><label>Assunto</label><input class="field-input" type="text" data-key="orc-tpl-subject" id="orc-tpl-subject" value="Solicitação de cotação — {evento}"></div>
+    <div class="field-row"><label>Assunto</label><input class="field-input" type="text" data-key="orc-tpl-subject" id="orc-tpl-subject" value="[ORÇAMENTO] {evento} {item}"></div>
     <div class="field-row"><label>Corpo</label><textarea class="field-textarea" data-key="orc-tpl-body" id="orc-tpl-body" style="min-height:130px;">Olá,
 
 Solicitamos orçamento para {item}, considerando o Termo de Referência anexo.
