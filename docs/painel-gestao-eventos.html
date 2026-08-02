@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hora de Ciência 2026 - Event Orchestrator</title>
+    <style>
+        body { font-family: sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; margin: 0; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
+        header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px; text-align: center; }
+        h1 { margin-bottom: 10px; font-size: 2.5em; }
+        .content { padding: 40px; }
+        .docs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; margin-top: 30px; }
+        .doc-card { border: 2px solid #e9ecef; border-radius: 10px; padding: 20px; text-align: center; cursor: pointer; transition: all 0.3s; }
+        .doc-card:hover { border-color: #667eea; box-shadow: 0 8px 24px rgba(102, 126, 234, 0.15); transform: translateY(-4px); }
+        .doc-icon { font-size: 3em; margin-bottom: 10px; }
+        .badge { display: inline-block; padding: 5px 10px; border-radius: 15px; font-size: 0.8em; background: #fff3cd; color: #856404; margin-bottom: 15px; }
+        button { padding: 10px 20px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; width: 100%; }
+        button:hover { background: #5568d3; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+        .modal.active { display: flex; }
+        .modal-content { background: white; border-radius: 12px; padding: 30px; width: 90%; max-width: 700px; max-height: 90vh; overflow-y: auto; }
+        textarea { width: 100%; height: 400px; padding: 15px; border: 1px solid #ddd; border-radius: 6px; font-family: monospace; margin: 20px 0; }
+        .modal-buttons { display: flex; gap: 10px; justify-content: flex-end; }
+        .modal-buttons button { width: auto; padding: 10px 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔬 Hora de Ciência 2026</h1>
+            <p>Painel Integrado com Event Orchestrator</p>
+        </header>
+
+        <div class="content">
+            <h2>📚 Documentos do Evento</h2>
+            <div class="docs-grid">
+                <div class="doc-card" onclick="abrirDoc('protocolo')">
+                    <div class="doc-icon">📋</div>
+                    <h3>Protocolo</h3>
+                    <p>Mesa de honra, timeline</p>
+                    <span class="badge">Rascunho</span>
+                    <button>Ver</button>
+                </div>
+
+                <div class="doc-card" onclick="abrirDoc('termo')">
+                    <div class="doc-icon">📜</div>
+                    <h3>Termo</h3>
+                    <p>Responsabilidades</p>
+                    <span class="badge">Rascunho</span>
+                    <button>Ver</button>
+                </div>
+
+                <div class="doc-card" onclick="abrirDoc('release')">
+                    <div class="doc-icon">📰</div>
+                    <h3>Release</h3>
+                    <p>Para jornalistas</p>
+                    <span class="badge">Rascunho</span>
+                    <button>Ver</button>
+                </div>
+
+                <div class="doc-card" onclick="abrirDoc('coletiva')">
+                    <div class="doc-icon">🎤</div>
+                    <h3>Coletiva</h3>
+                    <p>Roteiro imprensa</p>
+                    <span class="badge">Rascunho</span>
+                    <button>Ver</button>
+                </div>
+
+                <div class="doc-card" onclick="abrirDoc('checklist')">
+                    <div class="doc-icon">✅</div>
+                    <h3>Checklist</h3>
+                    <p>Produção 50+ itens</p>
+                    <span class="badge">Em Progresso</span>
+                    <button>Ver</button>
+                </div>
+
+                <div class="doc-card" onclick="abrirDoc('relatorio')">
+                    <div class="doc-icon">📊</div>
+                    <h3>Relatório</h3>
+                    <p>Execução final</p>
+                    <span class="badge">Pendente</span>
+                    <button>Ver</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <h2 id="modalTitle"></h2>
+            <textarea id="modalContent" readonly></textarea>
+            <div class="modal-buttons">
+                <button onclick="copiar()">Copiar</button>
+                <button onclick="fecharModal()">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const docs = {
+            protocolo: { title: "Protocolo de Cerimonial", content: "# Protocolo - Hora de Ciência 2026\n\nData: 15 de Novembro de 2026\nHorário: 9h00 - 12h00\nLocal: FELUMA - Auditório\n\n## Mesa de Honra\n1. Reitor\n2. Pró-Reitora\n3. Coordenadora\n4. Keynote Speaker\n5. Autoridades\n\n## Timeline\n9h00: Abertura\n9h15: Keynote (45 min)\n10h15: Pesquisas (45 min)\n11h00: Painel (45 min)\n11h45: Encerramento" },
+            termo: { title: "Termo de Responsabilidade", content: "# Termo de Responsabilidade\n\nFELUMA celebra com [PATROCINADOR]:\n\nOBRIGAÇÕES:\n- FELUMA fornece local\n- Fornecedor cumpre cronograma\n- Ambos garantem qualidade" },
+            release: { title: "Release de Imprensa", content: "# FELUMA PROMOVE HORA DE CIÊNCIA 2026\n\nEvento gratuito e aberto à comunidade.\n\nDATA: 15 de Novembro\nLOCAL: FELUMA\nPÚBLICO: 300 pessoas\n\nDESTAQUES:\n✓ Keynote Internacional\n✓ Pesquisas Premiadas\n✓ Transmissão ao Vivo" },
+            coletiva: { title: "Roteiro de Coletiva", content: "# Roteiro de Coletiva de Imprensa\n\n10h45-11h15\n\n1. Abertura (5 min)\n2. Reitor (10 min)\n3. Coordenadora (5 min)\n4. Keynote (5 min)\n5. Perguntas (5 min)" },
+            checklist: { title: "Checklist de Produção", content: "# Checklist - Hora de Ciência 2026\n\nANTES (até 30 de outubro):\n[ ] Confirmar palestrantes\n[ ] Cotação catering\n[ ] Release imprensa\n[ ] Convite jornalistas\n[ ] Teste AV\n\nDURANTE (15 de novembro):\n[ ] Recepção\n[ ] Execução conforme protocolo\n[ ] Cobertura jornalística\n\nDEPOIS (até 30 de novembro):\n[ ] Clipping de imprensa\n[ ] Agradecimentos\n[ ] Relatório final" },
+            relatorio: { title: "Relatório de Execução", content: "# Relatório de Execução\n\nEvento: Hora de Ciência 2026\nData: 15 de Novembro de 2026\n\nDADOS:\n- Público Real: [preencher]\n- Incidentes: [preencher]\n- Mídia Presente: [preencher]\n\nCONFORMIDADE:\n[ ] Abertura pontual\n[ ] Timeline respeitado\n[ ] Transmissão funcionou" }
+        };
+
+        function abrirDoc(id) {
+            document.getElementById('modalTitle').textContent = docs[id].title;
+            document.getElementById('modalContent').value = docs[id].content;
+            document.getElementById('modal').classList.add('active');
+        }
+
+        function fecharModal() {
+            document.getElementById('modal').classList.remove('active');
+        }
+
+        function copiar() {
+            navigator.clipboard.writeText(document.getElementById('modalContent').value);
+            alert('Copiado!');
+        }
+
+        document.getElementById('modal').addEventListener('click', e => {
+            if (e.target.id === 'modal') fecharModal();
+        });
+    </script>
+</body>
+</html>
