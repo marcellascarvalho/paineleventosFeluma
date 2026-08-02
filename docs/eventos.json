@@ -1,0 +1,28 @@
+{
+  "eventos": [
+    {
+      "id": 1,
+      "nome": "Hora de Ciência 2026",
+      "tipo": "Congresso/Simpósio Científico",
+      "data": "2026-11-15",
+      "local": "FELUMA - Auditório Principal",
+      "porte": 300,
+      "publico": "Pesquisadores, alunos, professores, comunidade",
+      "status": "Em Planejamento",
+      "coordenador": "Marcella Carvalho",
+      "documentos": {
+        "protocolo": true,
+        "termo": true,
+        "checklist": true,
+        "imprensa": true
+      },
+      "dataCriacao": "2026-08-01T10:00:00Z",
+      "dataInscricao": "2026-08-02T12:00:00Z"
+    }
+  ],
+  "configuracoes": {
+    "versao": "2.0",
+    "ultimaAtualizacao": "2026-08-02T12:00:00Z",
+    "armazenamento": "localStorage + JSON"
+  }
+}
