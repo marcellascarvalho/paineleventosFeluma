@@ -610,10 +610,11 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
   <button class="tbtn" id="btn-import-trigger">⬆ Importar backup</button>
   <input type="file" id="file-import" accept="application/json">
   <button class="tbtn primary" id="btn-pdf">📄 Baixar relatório em PDF</button>
-  <button class="tbtn" id="btn-gdrive-config" title="Configurar sincronização automática com o Google Drive">☁ Google Drive</button>
+  <button class="tbtn" id="btn-gdrive-config" title="Enviar também uma cópia do PDF do relatório para uma pasta do Google Drive (opcional)">☁ Backup do PDF no Drive</button>
   <button class="tbtn" id="btn-archive" title="Ver eventos arquivados anteriormente">🗂 Eventos salvos</button>
+  <button class="tbtn" id="btn-sync-now" title="Verificar agora se há dados mais recentes de outro aparelho">🔄 Sincronizar agora</button>
   <span id="pdf-status" style="font-size:.72rem; color:#9fabc4;"></span>
-  <span id="gdrive-sync-status" style="font-size:.72rem; color:#9fabc4;"></span>
+  <span id="sync-status" style="font-size:.72rem; color:#9fabc4;"></span>
   <button class="tbtn danger" id="btn-reset">Limpar tudo</button>
   <div class="progress-mini">
     <span>Checklist geral: <span id="progress-text">0/0</span></span>
@@ -832,8 +833,8 @@ Ficamos no aguardo do retorno.</textarea></div>
 <!-- ===== CONFIGURAÇÃO GOOGLE DRIVE ===== -->
 <div class="modal-overlay hidden" id="gdrive-modal">
   <div class="modal-box">
-    <h3>Sincronizar com o Google Drive</h3>
-    <p>Com isso configurado, o preenchimento do painel (evento atual + histórico de "Eventos salvos") fica sincronizado automaticamente com um arquivo na pasta do Drive abaixo — abrindo esta mesma URL em qualquer computador ou celular e entrando com a mesma conta Google, os dados são carregados sozinhos, sem precisar exportar/importar JSON. Ao clicar em "Baixar relatório em PDF" também é enviada uma cópia do PDF pra essa pasta. É necessário um Client ID OAuth do Google Cloud autorizado para o endereço onde este painel está hospedado (não funciona abrindo o arquivo direto do computador, só em http/https). Se você editar em dois aparelhos ao mesmo tempo sem sincronizar entre eles, a última alteração salva é que prevalece.</p>
+    <h3>Backup do PDF no Google Drive (opcional)</h3>
+    <p>O histórico de eventos já sincroniza sozinho entre todos os aparelhos, sem precisar de login — isso aqui é só um extra: se configurado, toda vez que alguém clicar em "Baixar relatório em PDF" também é enviada uma cópia desse PDF para a pasta do Drive abaixo. É necessário um Client ID OAuth do Google Cloud autorizado para o endereço onde este painel está hospedado, e pedirá login com uma conta Google que tenha acesso de edição a essa pasta (não funciona abrindo o arquivo direto do computador, só em http/https).</p>
     <div class="field-row">
       <label>Client ID OAuth (Google Cloud Console)</label>
       <input class="field-input" type="text" id="gdrive-client-id" placeholder="xxxxxxxxxx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com">
@@ -845,7 +846,6 @@ Ficamos no aguardo do retorno.</textarea></div>
     <div class="gdrive-status-line" id="gdrive-modal-status"></div>
     <div class="modal-actions">
       <button class="tbtn" id="gdrive-modal-switch-account" title="Force a escolha de conta Google na próxima autorização">Trocar conta Google</button>
-      <button class="tbtn" id="gdrive-modal-sync-now" title="Buscar/enviar dados no Drive agora">🔄 Sincronizar agora</button>
       <button class="tbtn" id="gdrive-modal-cancel">Fechar</button>
       <button class="tbtn primary" id="gdrive-modal-save">Salvar configuração</button>
     </div>
@@ -892,22 +892,30 @@ Ficamos no aguardo do retorno.</textarea></div>
 <script>
 (function(){
   const STORE_KEY = 'painel_gestao_eventos_v1'; // TROCAR por chave única por evento, ex: 'evento_colacao_2026_v1'
-  // Config do Google Drive precisa existir cedo: setupChecklist()/persistKit() já chamam saveStore()
-  // durante a inicialização, e saveStore() aciona scheduleGdrivePush() -> gdriveConfig() e as variáveis abaixo.
+  // Precisam existir cedo: setupChecklist()/persistKit() já chamam saveStore() durante a
+  // inicialização, e saveStore() aciona scheduleSupabasePush() -> as variáveis abaixo.
   const GDRIVE_CLIENT_KEY = 'gdrive-client-id';
   const GDRIVE_FOLDER_KEY = 'gdrive-folder-id';
-  // Config padrão do Drive compartilhado do painel: um Client ID OAuth não é segredo (só
-  // funciona a partir das origens autorizadas no Google Cloud Console) e o ID da pasta sozinho
-  // não dá acesso a nada — quem autoriza de fato é o login Google de cada pessoa. Deixando os
-  // dois já embutidos, qualquer aparelho novo (celular, tablet, outro computador) sincroniza
-  // com a mesma pasta sem precisar preencher esse formulário manualmente; localStorage
-  // continua podendo sobrescrever, caso alguém precise apontar para outra pasta/projeto.
+  // Config padrão do backup de PDF no Drive (opcional — veja o menu ☁ Backup do PDF no Drive):
+  // um Client ID OAuth não é segredo (só funciona a partir das origens autorizadas no Google
+  // Cloud Console) e o ID da pasta sozinho não dá acesso a nada — quem autoriza de fato é o
+  // login Google de cada pessoa. localStorage continua podendo sobrescrever isso, caso alguém
+  // precise apontar para outra pasta/projeto.
   const DEFAULT_GDRIVE_CLIENT_ID = '67889398316-mb1qffdehhqjd3ls70g5lg0rc0a5c481.apps.googleusercontent.com';
   const DEFAULT_GDRIVE_FOLDER_ID = '1cw2cBdrmT-jaXOUy2Nn1I5ZQrubuF5CJ';
-  let gdrivePushTimer = null;
-  let gdrivePushInFlight = false;
-  let gdrivePushPending = false;
-
+  // Sincronização do histórico de eventos: um banco Supabase público (sem login) compartilhado
+  // por todo mundo que usa o painel. Nem o Client ID acima nem essa chave "anon" são segredos —
+  // a chave anon do Supabase é feita pra ficar em código de cliente; o controle de acesso mora
+  // nas policies do banco (aqui, liberado pra leitura/escrita, de propósito, pra qualquer pessoa
+  // com o link poder usar o painel sem conta).
+  const SUPABASE_URL = 'https://xhidcbfjdyrompxubrha.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhoaWRjYmZqZHlyb21weHVicmhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYxMzAxMTMsImV4cCI6MjEwMTcwNjExM30.yHLmSd5k2qYYIPiu3QPkFdSx-z8uOID5c4RJySXZ1iA';
+  const SUPABASE_TABLE = 'painel_eventos_sync';
+  const SUPABASE_ROW_ID = 'painel-principal';
+  const SUPABASE_LAST_SYNC_KEY = 'supabase-last-sync-at';
+  let supabasePushTimer = null;
+  let supabasePushInFlight = false;
+  let supabasePushPending = false;
   function loadStore(){
     try{ return JSON.parse(localStorage.getItem(STORE_KEY) || '{}'); }
     catch(e){ return {}; }
@@ -920,7 +928,7 @@ Ficamos no aguardo do retorno.</textarea></div>
       clearTimeout(window.__saveTimer);
       window.__saveTimer = setTimeout(()=>{ label.textContent = 'Preenchimento salvo neste navegador'; }, 1500);
     }
-    scheduleGdrivePush();
+    scheduleSupabasePush();
   }
 
   let store = loadStore();
@@ -1164,7 +1172,7 @@ Ficamos no aguardo do retorno.</textarea></div>
   }
   function saveArchive(list){
     try{ localStorage.setItem(ARCHIVE_KEY, JSON.stringify(list)); }catch(e){}
-    scheduleGdrivePush();
+    scheduleSupabasePush();
   }
   function archiveCurrentEvent(){
     const list = loadArchive();
@@ -1308,8 +1316,8 @@ Ficamos no aguardo do retorno.</textarea></div>
       archiveCurrentEvent();
       store = {};
       try{ localStorage.removeItem(STORE_KEY); }catch(e){}
-      clearTimeout(gdrivePushTimer);
-      await gdrivePush();
+      clearTimeout(supabasePushTimer);
+      await supabasePush();
       location.reload();
     });
   })();
@@ -1927,131 +1935,75 @@ Ficamos no aguardo do retorno.</textarea></div>
     return res.json();
   }
 
-  // ===================== SINCRONIZAÇÃO DE DADOS COM O DRIVE (acessar de qualquer aparelho) =====================
-  const GDRIVE_DATA_FILE_NAME = 'painel-dados-eventos.json';
-  const GDRIVE_DATA_FILE_ID_KEY = 'gdrive-data-file-id';
-  const GDRIVE_LAST_SYNC_KEY = 'gdrive-last-sync-at';
-
-  function gdriveSyncStatus(msg){
-    // Atualiza as duas caixinhas de status: a da barra de ferramentas (gdrive-sync-status) e a
-    // de dentro do menu ☁ Google Drive (gdrive-modal-status). Antes só a primeira era
-    // atualizada, então clicar em "Sincronizar agora" dentro do menu ficava preso na mensagem
-    // "Sincronizando..." pra sempre, mesmo quando o resultado real (sucesso ou erro) já tinha
-    // chegado — só não aparecia porque estava na caixinha errada.
-    const el = document.getElementById('gdrive-sync-status');
+  // ===================== SINCRONIZAÇÃO DO HISTÓRICO (Supabase, sem login — qualquer aparelho) ===
+  function syncStatus(msg){
+    const el = document.getElementById('sync-status');
     if(el) el.textContent = msg;
-    const modalEl = document.getElementById('gdrive-modal-status');
-    if(modalEl) modalEl.textContent = msg;
   }
-  async function findOrCacheDataFileId(token, folderId){
-    const cached = localStorage.getItem(GDRIVE_DATA_FILE_ID_KEY);
-    if(cached) return cached;
-    let q = "name='"+GDRIVE_DATA_FILE_NAME+"' and trashed=false";
-    if(folderId) q += " and '"+folderId+"' in parents";
-    const res = await fetch('https://www.googleapis.com/drive/v3/files?q='+encodeURIComponent(q)+'&fields=files(id,name)', {
-      headers: { Authorization: 'Bearer ' + token }
-    });
-    if(!res.ok) throw new Error('Falha ao procurar dados no Drive (HTTP '+res.status+')');
-    const json = await res.json();
-    if(json.files && json.files.length){
-      localStorage.setItem(GDRIVE_DATA_FILE_ID_KEY, json.files[0].id);
-      return json.files[0].id;
-    }
-    return null;
-  }
-  async function createDataFile(token, folderId, payload){
-    const metadata = { name: GDRIVE_DATA_FILE_NAME };
-    if(folderId) metadata.parents = [folderId];
-    const form = new FormData();
-    form.append('metadata', new Blob([JSON.stringify(metadata)], {type:'application/json'}));
-    form.append('file', new Blob([JSON.stringify(payload)], {type:'application/json'}));
-    const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
-      method: 'POST', headers: { Authorization: 'Bearer ' + token }, body: form
-    });
-    if(!res.ok) throw new Error('Falha ao criar arquivo de dados no Drive (HTTP '+res.status+')');
-    const json = await res.json();
-    localStorage.setItem(GDRIVE_DATA_FILE_ID_KEY, json.id);
-    return json.id;
-  }
-  async function updateDataFile(token, fileId, payload){
-    const res = await fetch('https://www.googleapis.com/upload/drive/v3/files/'+fileId+'?uploadType=media', {
-      method: 'PATCH',
-      headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    if(!res.ok) throw new Error('Falha ao atualizar dados no Drive (HTTP '+res.status+')');
-  }
-  async function downloadDataFile(token, fileId){
-    const res = await fetch('https://www.googleapis.com/drive/v3/files/'+fileId+'?alt=media', {
-      headers: { Authorization: 'Bearer ' + token }
-    });
-    if(!res.ok) throw new Error('Falha ao baixar dados do Drive (HTTP '+res.status+')');
-    return res.json();
-  }
-  async function gdrivePush(){
-    const cfg = gdriveConfig();
-    if(!cfg.clientId || !gdriveIsHosted()) return;
-    if(gdrivePushInFlight){ gdrivePushPending = true; return; }
-    gdrivePushInFlight = true;
+  async function supabasePush(){
+    if(!gdriveIsHosted()) return; // idem ao Drive: não faz sentido sincronizar abrindo o arquivo local
+    if(supabasePushInFlight){ supabasePushPending = true; return; }
+    supabasePushInFlight = true;
     try{
-      gdriveSyncStatus('Sincronizando com o Drive...');
-      const token = await getGDriveAccessToken(cfg.clientId);
-      let fileId = await findOrCacheDataFileId(token, cfg.folderId);
+      syncStatus('Sincronizando...');
       const payload = { savedAt: new Date().toISOString(), store: store, archive: loadArchive() };
-      if(!fileId){
-        fileId = await createDataFile(token, cfg.folderId, payload);
-      } else {
-        await updateDataFile(token, fileId, payload);
-      }
-      localStorage.setItem(GDRIVE_LAST_SYNC_KEY, payload.savedAt);
-      gdriveSyncStatus('Sincronizado com o Drive às ' + new Date(payload.savedAt).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));
+      const res = await fetch(SUPABASE_URL+'/rest/v1/'+SUPABASE_TABLE, {
+        method: 'POST',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: 'Bearer ' + SUPABASE_ANON_KEY,
+          'Content-Type': 'application/json',
+          Prefer: 'resolution=merge-duplicates,return=minimal'
+        },
+        body: JSON.stringify({ id: SUPABASE_ROW_ID, data: payload })
+      });
+      if(!res.ok) throw new Error('Falha ao sincronizar (HTTP '+res.status+')');
+      localStorage.setItem(SUPABASE_LAST_SYNC_KEY, payload.savedAt);
+      syncStatus('Sincronizado às ' + new Date(payload.savedAt).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));
     }catch(err){
       console.error(err);
-      gdriveSyncStatus('Falha ao sincronizar com o Drive: ' + (err.message||'erro desconhecido'));
+      syncStatus('Falha ao sincronizar: ' + (err.message||'erro desconhecido'));
     }finally{
-      gdrivePushInFlight = false;
-      if(gdrivePushPending){ gdrivePushPending = false; gdrivePush(); }
+      supabasePushInFlight = false;
+      if(supabasePushPending){ supabasePushPending = false; supabasePush(); }
     }
   }
-  function scheduleGdrivePush(){
-    const cfg = gdriveConfig();
-    if(!cfg.clientId || !gdriveIsHosted()) return;
-    clearTimeout(gdrivePushTimer);
-    gdrivePushTimer = setTimeout(gdrivePush, 4000);
+  function scheduleSupabasePush(){
+    if(!gdriveIsHosted()) return;
+    clearTimeout(supabasePushTimer);
+    supabasePushTimer = setTimeout(supabasePush, 4000);
   }
-  async function gdrivePullIfNewer(){
-    const cfg = gdriveConfig();
-    if(!cfg.clientId || !gdriveIsHosted()) return;
+  async function supabasePullIfNewer(){
+    if(!gdriveIsHosted()) return;
     try{
-      gdriveSyncStatus('Verificando dados no Drive...');
-      const token = await getGDriveAccessToken(cfg.clientId);
-      const fileId = await findOrCacheDataFileId(token, cfg.folderId);
-      if(!fileId){ gdriveSyncStatus(''); return; }
-      const remote = await downloadDataFile(token, fileId);
-      const localLastSync = localStorage.getItem(GDRIVE_LAST_SYNC_KEY) || '';
+      syncStatus('Verificando atualizações...');
+      const res = await fetch(SUPABASE_URL+'/rest/v1/'+SUPABASE_TABLE+'?id=eq.'+SUPABASE_ROW_ID+'&select=data', {
+        headers: { apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + SUPABASE_ANON_KEY }
+      });
+      if(!res.ok) throw new Error('Falha ao verificar atualizações (HTTP '+res.status+')');
+      const rows = await res.json();
+      const remote = rows && rows[0] && rows[0].data;
+      const localLastSync = localStorage.getItem(SUPABASE_LAST_SYNC_KEY) || '';
       if(remote && remote.savedAt && remote.savedAt > localLastSync){
         localStorage.setItem(STORE_KEY, JSON.stringify(remote.store||{}));
         localStorage.setItem(ARCHIVE_KEY, JSON.stringify(remote.archive||[]));
-        localStorage.setItem(GDRIVE_LAST_SYNC_KEY, remote.savedAt);
+        localStorage.setItem(SUPABASE_LAST_SYNC_KEY, remote.savedAt);
         location.reload();
         return;
       }
-      gdriveSyncStatus('Dados sincronizados com o Drive.');
+      syncStatus('Dados atualizados.');
     }catch(err){
       console.error(err);
-      gdriveSyncStatus('Não foi possível verificar dados no Drive: ' + (err.message||'erro desconhecido'));
+      syncStatus('Não foi possível verificar atualizações: ' + (err.message||'erro desconhecido'));
     }
   }
-  // Só sincroniza sozinho ao carregar a página se já existe um token válido em cache:
-  // sem token, pedir um novo dispara um popup do Google, e popups fora de um clique
-  // direto do usuário são bloqueados pelo navegador (gerando o erro de timeout).
-  // Nesse caso, apenas convida a pessoa a clicar em "Sincronizar agora".
-  if(loadCachedToken()){
-    gdrivePullIfNewer();
-  }else if(gdriveConfig().clientId){
-    gdriveSyncStatus('Clique em "🔄 Sincronizar agora" para verificar atualizações no Drive.');
-  }
+  // Roda sozinho ao abrir a página: são só chamadas fetch com uma chave pública, sem OAuth nem
+  // popup — por isso não trava e não depende de estar logado em nenhuma conta específica,
+  // diferente do antigo fluxo pelo Google Drive.
+  supabasePullIfNewer();
+  document.getElementById('btn-sync-now').addEventListener('click', ()=> supabasePullIfNewer());
 
+  // ===================== BACKUP OPCIONAL DO PDF NO GOOGLE DRIVE =====================
   document.getElementById('btn-gdrive-config').addEventListener('click', ()=>{
     const cfg = gdriveConfig();
     document.getElementById('gdrive-client-id').value = cfg.clientId;
@@ -2069,17 +2021,11 @@ Ficamos no aguardo do retorno.</textarea></div>
     gdriveForceAccountPicker = true;
     document.getElementById('gdrive-modal-status').textContent = 'Pronto: na próxima vez que clicar em "Baixar relatório em PDF", o Google vai pedir para escolher a conta novamente.';
   });
-  document.getElementById('gdrive-modal-sync-now').addEventListener('click', ()=>{
-    document.getElementById('gdrive-modal-status').textContent = 'Sincronizando...';
-    gdrivePullIfNewer();
-  });
   document.getElementById('gdrive-modal-save').addEventListener('click', ()=>{
     localStorage.setItem(GDRIVE_CLIENT_KEY, document.getElementById('gdrive-client-id').value.trim());
     localStorage.setItem(GDRIVE_FOLDER_KEY, document.getElementById('gdrive-folder-id').value.trim());
     clearCachedToken();
-    localStorage.removeItem(GDRIVE_DATA_FILE_ID_KEY);
     document.getElementById('gdrive-modal-status').textContent = 'Configuração salva neste navegador.';
-    gdrivePullIfNewer();
   });
 
   async function generatePdf(){
