@@ -1158,13 +1158,24 @@ Ficamos no aguardo do retorno.</textarea></div>
   function archiveCurrentEvent(){
     const list = loadArchive();
     const eventName = (store['evento-nome'] || '').trim() || 'Evento sem nome';
+    // Atualiza a versão já existente do mesmo evento em vez de criar uma cópia nova a cada
+    // vez: primeiro tenta achar pelo id de origem (robusto a renomear o evento), senão pelo
+    // nome (cobre o caso de um evento novo com o mesmo nome de um já arquivado antes).
+    const sourceId = store['__archive_source_id'];
+    let existingIdx = sourceId ? list.findIndex(s => s.id === sourceId) : -1;
+    if(existingIdx === -1){
+      existingIdx = list.findIndex(s => s.eventName === eventName);
+    }
+    const id = existingIdx !== -1 ? list[existingIdx].id : ('arq-' + Date.now());
+    store['__archive_source_id'] = id;
     const snapshot = {
-      id: 'arq-' + Date.now(),
+      id: id,
       eventName: eventName,
       eventDate: fmtRange(store['evento-data-inicio'], store['evento-data-fim'], 'a').replace('—',''),
       archivedAt: new Date().toISOString(),
       data: JSON.parse(JSON.stringify(store))
     };
+    if(existingIdx !== -1) list.splice(existingIdx, 1);
     list.unshift(snapshot);
     saveArchive(list);
     return snapshot;
@@ -1208,7 +1219,10 @@ Ficamos no aguardo do retorno.</textarea></div>
         if((store['evento-nome']||'').trim()){
           archiveCurrentEvent();
         }
-        localStorage.setItem(STORE_KEY, JSON.stringify(snap.data));
+        // Marca de qual versão arquivada este evento veio, para que a próxima vez que for
+        // salvo/arquivado atualize essa mesma entrada em vez de criar uma cópia nova.
+        const dataToLoad = Object.assign({}, snap.data, { '__archive_source_id': snap.id });
+        localStorage.setItem(STORE_KEY, JSON.stringify(dataToLoad));
         location.reload();
       });
       armConfirmButton(row.querySelector('.archive-delete'), 'Excluir', 'Confirmar exclusão', ()=>{
