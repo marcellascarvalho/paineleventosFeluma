@@ -571,6 +571,25 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
   .dyn-table{min-width:760px;}
   .dyn-table input.field-input, .dyn-table select.stat-select{width:100%;}
   .dyn-actions{display:flex; gap:6px; flex-wrap:wrap;}
+  @media(max-width:720px){
+    /* Nenhuma largura de coluna é grande o suficiente pra um input de texto comprido sem
+       cortar — rolar de lado só trocava "espremido" por "só dá pra ver 2 colunas por vez".
+       Em vez disso, cada linha vira um cartão: rótulo em cima, campo com a largura toda
+       embaixo. No computador (acima desse tamanho) continua sendo uma tabela normal. */
+    .dyn-table{min-width:0;}
+    .table-scroll{overflow-x:visible;}
+    .dyn-table thead{display:none;}
+    .dyn-table, .dyn-table tbody, .dyn-table tr, .dyn-table td{display:block; width:100%;}
+    .dyn-table tr{border:1px solid var(--line); border-radius:10px; padding:14px; margin-bottom:14px; background:#fff;}
+    .dyn-table tr:last-child{margin-bottom:0;}
+    .dyn-table td{padding:7px 0;}
+    .dyn-table td[data-label]::before{
+      content:attr(data-label); display:block; font-family:'Inter'; font-size:.7rem;
+      font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-soft);
+      margin-bottom:4px;
+    }
+    .dyn-table td.dyn-actions{padding-top:12px;}
+  }
   .dyn-summary .v{font-size:1.35rem; font-weight:800; color:var(--navy);}
   .tpl-card{background:var(--cream); border:1px dashed var(--line);}
   /* Sem min-width a tabela só encolhia as colunas até ficarem ilegíveis (texto cortado
@@ -1393,20 +1412,20 @@ Ficamos no aguardo do retorno.</textarea></div>
     acaoRows.forEach(row=>{
       const tr = document.createElement('tr');
       tr.innerHTML =
-        '<td><input class="field-input ac-tipo" type="text" value="'+escapeHtml(row.tipo)+'" placeholder="Tipo"></td>'+
-        '<td><input class="field-input ac-tarefa" type="text" value="'+escapeHtml(row.tarefa)+'" placeholder="Descrição da tarefa"></td>'+
-        '<td><input class="field-input ac-fornecedor" type="text" value="'+escapeHtml(row.fornecedor)+'" placeholder="Fornecedor"></td>'+
-        '<td><input class="field-input ac-contato" type="text" value="'+escapeHtml(row.contato)+'" placeholder="Telefone / e-mail"></td>'+
-        '<td><input class="field-input ac-responsavel" type="text" value="'+escapeHtml(row.responsavel)+'" placeholder="Responsável"></td>'+
-        '<td><select class="stat-select ac-status">'+
+        '<td data-label="Tipo"><input class="field-input ac-tipo" type="text" value="'+escapeHtml(row.tipo)+'" placeholder="Tipo"></td>'+
+        '<td data-label="Tarefa"><input class="field-input ac-tarefa" type="text" value="'+escapeHtml(row.tarefa)+'" placeholder="Descrição da tarefa"></td>'+
+        '<td data-label="Fornecedor"><input class="field-input ac-fornecedor" type="text" value="'+escapeHtml(row.fornecedor)+'" placeholder="Fornecedor"></td>'+
+        '<td data-label="Contato fornecedor"><input class="field-input ac-contato" type="text" value="'+escapeHtml(row.contato)+'" placeholder="Telefone / e-mail"></td>'+
+        '<td data-label="Responsável"><input class="field-input ac-responsavel" type="text" value="'+escapeHtml(row.responsavel)+'" placeholder="Responsável"></td>'+
+        '<td data-label="Status"><select class="stat-select ac-status">'+
           '<option value="pending">Não iniciada</option>'+
           '<option value="progress">Em execução</option>'+
           '<option value="done">Concluída</option>'+
           '<option value="attention">Atrasada</option>'+
         '</select></td>'+
-        '<td><input class="field-input ac-inicio" type="text" value="'+escapeHtml(row.inicio)+'" placeholder="dd/mm/aaaa"></td>'+
-        '<td><input class="field-input ac-termino" type="text" value="'+escapeHtml(row.termino)+'" placeholder="dd/mm/aaaa"></td>'+
-        '<td><input class="field-input ac-obs" type="text" value="'+escapeHtml(row.obs)+'" placeholder="Observações"></td>'+
+        '<td data-label="Início"><input class="field-input ac-inicio" type="text" value="'+escapeHtml(row.inicio)+'" placeholder="dd/mm/aaaa"></td>'+
+        '<td data-label="Término"><input class="field-input ac-termino" type="text" value="'+escapeHtml(row.termino)+'" placeholder="dd/mm/aaaa"></td>'+
+        '<td data-label="Observações"><input class="field-input ac-obs" type="text" value="'+escapeHtml(row.obs)+'" placeholder="Observações"></td>'+
         '<td class="dyn-actions"><button class="tbtn danger ac-remove" title="Remover">✕</button></td>';
 
       const sel = tr.querySelector('.ac-status');
@@ -1482,12 +1501,12 @@ Ficamos no aguardo do retorno.</textarea></div>
     orcRows.forEach(row=>{
       const tr = document.createElement('tr');
       tr.innerHTML =
-        '<td><input class="field-input orc-item" type="text" value="'+escapeHtml(row.item)+'" placeholder="Ex: Buffet, som, decoração..."></td>'+
-        '<td><input class="field-input orc-fornecedor" type="text" value="'+escapeHtml(row.fornecedor)+'" placeholder="Nome do fornecedor"></td>'+
-        '<td><input class="field-input orc-email" type="email" value="'+escapeHtml(row.email)+'" placeholder="email@fornecedor.com"></td>'+
-        '<td><input class="field-input orc-estimado" type="number" step="0.01" value="'+escapeHtml(row.estimado)+'" placeholder="0,00"></td>'+
-        '<td><input class="field-input orc-cotado" type="number" step="0.01" value="'+escapeHtml(row.cotado)+'" placeholder="0,00"></td>'+
-        '<td><select class="stat-select orc-status">'+
+        '<td data-label="Item / categoria"><input class="field-input orc-item" type="text" value="'+escapeHtml(row.item)+'" placeholder="Ex: Buffet, som, decoração..."></td>'+
+        '<td data-label="Fornecedor"><input class="field-input orc-fornecedor" type="text" value="'+escapeHtml(row.fornecedor)+'" placeholder="Nome do fornecedor"></td>'+
+        '<td data-label="E-mail"><input class="field-input orc-email" type="email" value="'+escapeHtml(row.email)+'" placeholder="email@fornecedor.com"></td>'+
+        '<td data-label="Estimado (R$)"><input class="field-input orc-estimado" type="number" step="0.01" value="'+escapeHtml(row.estimado)+'" placeholder="0,00"></td>'+
+        '<td data-label="Cotado (R$)"><input class="field-input orc-cotado" type="number" step="0.01" value="'+escapeHtml(row.cotado)+'" placeholder="0,00"></td>'+
+        '<td data-label="Status"><select class="stat-select orc-status">'+
           '<option value="pending">Não solicitado</option>'+
           '<option value="progress">Aguardando resposta</option>'+
           '<option value="attention">Cotação recebida</option>'+
