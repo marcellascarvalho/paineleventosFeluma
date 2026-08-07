@@ -896,6 +896,14 @@ Ficamos no aguardo do retorno.</textarea></div>
   // durante a inicialização, e saveStore() aciona scheduleGdrivePush() -> gdriveConfig() e as variáveis abaixo.
   const GDRIVE_CLIENT_KEY = 'gdrive-client-id';
   const GDRIVE_FOLDER_KEY = 'gdrive-folder-id';
+  // Config padrão do Drive compartilhado do painel: um Client ID OAuth não é segredo (só
+  // funciona a partir das origens autorizadas no Google Cloud Console) e o ID da pasta sozinho
+  // não dá acesso a nada — quem autoriza de fato é o login Google de cada pessoa. Deixando os
+  // dois já embutidos, qualquer aparelho novo (celular, tablet, outro computador) sincroniza
+  // com a mesma pasta sem precisar preencher esse formulário manualmente; localStorage
+  // continua podendo sobrescrever, caso alguém precise apontar para outra pasta/projeto.
+  const DEFAULT_GDRIVE_CLIENT_ID = '67889398316-mb1qffdehhqjd3ls70g5lg0rc0a5c481.apps.googleusercontent.com';
+  const DEFAULT_GDRIVE_FOLDER_ID = '1cw2cBdrmT-jaXOUy2Nn1I5ZQrubuF5CJ';
   let gdrivePushTimer = null;
   let gdrivePushInFlight = false;
   let gdrivePushPending = false;
@@ -1828,8 +1836,8 @@ Ficamos no aguardo do retorno.</textarea></div>
   }
   function gdriveConfig(){
     return {
-      clientId: localStorage.getItem(GDRIVE_CLIENT_KEY) || '',
-      folderId: localStorage.getItem(GDRIVE_FOLDER_KEY) || ''
+      clientId: localStorage.getItem(GDRIVE_CLIENT_KEY) || DEFAULT_GDRIVE_CLIENT_ID,
+      folderId: localStorage.getItem(GDRIVE_FOLDER_KEY) || DEFAULT_GDRIVE_FOLDER_ID
     };
   }
   function loadCachedToken(){
