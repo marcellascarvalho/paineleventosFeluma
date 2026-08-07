@@ -1991,7 +1991,15 @@ Ficamos no aguardo do retorno.</textarea></div>
       gdriveSyncStatus('Não foi possível verificar dados no Drive: ' + (err.message||'erro desconhecido'));
     }
   }
-  gdrivePullIfNewer();
+  // Só sincroniza sozinho ao carregar a página se já existe um token válido em cache:
+  // sem token, pedir um novo dispara um popup do Google, e popups fora de um clique
+  // direto do usuário são bloqueados pelo navegador (gerando o erro de timeout).
+  // Nesse caso, apenas convida a pessoa a clicar em "Sincronizar agora".
+  if(loadCachedToken()){
+    gdrivePullIfNewer();
+  }else if(gdriveConfig().clientId){
+    gdriveSyncStatus('Clique em "🔄 Sincronizar agora" para verificar atualizações no Drive.');
+  }
 
   document.getElementById('btn-gdrive-config').addEventListener('click', ()=>{
     const cfg = gdriveConfig();
