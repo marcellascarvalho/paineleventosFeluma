@@ -466,8 +466,15 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
   @media(max-width:900px){
     .grid-2,.grid-3,.grid-4{grid-template-columns:1fr;}
     nav{gap:16px; padding:0 16px;}
-    .toolbar{padding:9px 16px;}
     section{padding:44px 6vw;}
+  }
+  @media(max-width:720px){
+    /* Empilhados, os botões da barra de ferramentas tomavam a tela toda antes de chegar
+       em qualquer conteúdo do painel. Vira uma faixa única que rola de lado, do mesmo
+       jeito que o menu (nav) logo acima já funciona. */
+    .toolbar{padding:9px 16px; flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch;}
+    .toolbar > *{flex-shrink:0;}
+    .toolbar .progress-mini{margin-left:0;}
   }
 
   .card{background:var(--paper); border:1px solid var(--line); border-radius:14px; padding:22px 24px; box-shadow:0 2px 10px rgba(18,33,61,.04);}
@@ -536,6 +543,24 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
     border-radius:7px; font-size:.72rem; opacity:.45; flex-shrink:0;
   }
   .chk-row.extra-row .extra-remove:hover{opacity:1; background:rgba(179,73,90,0.15);}
+
+  @media(max-width:640px){
+    /* Num input de uma linha só, texto comprido simplesmente fica cortado (inputs não
+       quebram linha) — em telas estreitas não sobra espaço nenhum ao lado da checkbox e
+       do botão de remover. Empilha em duas linhas: checkbox + remover em cima, texto
+       ocupando a largura toda embaixo. */
+    .chk-row.extra-row{
+      grid-template-columns:22px 1fr 30px;
+      grid-template-areas:"cb . del" "text text text";
+      row-gap:4px;
+    }
+    .chk-row.extra-row input[type=checkbox]{grid-area:cb;}
+    .chk-row.extra-row .field-input{grid-area:text;}
+    .chk-row.extra-row .extra-remove{grid-area:del; justify-self:end;}
+    /* Deixa uma "espiada" da próxima fase do cronograma pra ficar claro que dá pra
+       arrastar pros lados, em vez de parecer que o conteúdo foi cortado. */
+    .macro-step{min-width:82vw;}
+  }
   .chk-add-btn{
     margin-top:14px; width:100%; justify-content:center;
     border:1px dashed var(--line); background:transparent; color:var(--ink-soft);
@@ -543,11 +568,15 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
   }
   .chk-add-btn:hover{background:var(--cream); border-color:var(--gold); color:var(--navy);}
 
+  .dyn-table{min-width:760px;}
   .dyn-table input.field-input, .dyn-table select.stat-select{width:100%;}
   .dyn-actions{display:flex; gap:6px; flex-wrap:wrap;}
   .dyn-summary .v{font-size:1.35rem; font-weight:800; color:var(--navy);}
   .tpl-card{background:var(--cream); border:1px dashed var(--line);}
-  .table-scroll{overflow-x:auto;}
+  /* Sem min-width a tabela só encolhia as colunas até ficarem ilegíveis (texto cortado
+     dentro dos inputs) em vez de rolar; com min-width, o table-scroll abaixo passa a
+     rolar de verdade em telas estreitas. */
+  .table-scroll{overflow-x:auto; -webkit-overflow-scrolling:touch;}
 
   .doc-num{font-family:'JetBrains Mono',monospace; font-size:.72rem; color:var(--gold); font-weight:700; letter-spacing:.05em; flex-shrink:0; min-width:56px;}
 
@@ -578,7 +607,13 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
   .modal-box h3{margin-bottom:.3em;}
   .modal-box p{font-size:.85rem; color:var(--ink-soft);}
   .modal-box .field-row label{font-weight:700;}
-  .modal-actions{display:flex; gap:10px; justify-content:flex-end; margin-top:18px;}
+  .modal-actions{display:flex; gap:10px; justify-content:flex-end; margin-top:18px; flex-wrap:wrap;}
+  @media(max-width:640px){
+    /* Três/quatro botões espremidos lado a lado quebravam o texto em várias linhas.
+       Em coluna, cada botão fica com a largura toda e o texto numa linha só. */
+    .modal-actions{flex-direction:column;}
+    .modal-actions .tbtn{width:100%; justify-content:center;}
+  }
   .gdrive-status-line{font-size:.78rem; margin-top:10px; padding:8px 10px; border-radius:8px; background:var(--cream); color:var(--ink-soft);}
 
   #archive-list{max-height:50vh; overflow-y:auto; padding-right:6px;}
