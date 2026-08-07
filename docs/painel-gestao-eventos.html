@@ -1203,6 +1203,11 @@ Ficamos no aguardo do retorno.</textarea></div>
         '<span>Arquivado em '+dtLabel+(snap.eventDate ? ' · Data do evento: '+escapeHtml(snap.eventDate) : '')+'</span></div>'+
         '<div class="archive-row-actions"><button class="tbtn archive-open">Abrir</button><button class="tbtn danger archive-delete">Excluir</button></div>';
       armConfirmButton(row.querySelector('.archive-open'), 'Abrir', 'Confirmar abertura', ()=>{
+        // Arquiva o evento atualmente ativo antes de trocar, senão o preenchimento em
+        // andamento (ainda não salvo em "Eventos salvos") seria perdido silenciosamente.
+        if((store['evento-nome']||'').trim()){
+          archiveCurrentEvent();
+        }
         localStorage.setItem(STORE_KEY, JSON.stringify(snap.data));
         location.reload();
       });
