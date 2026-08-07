@@ -1933,8 +1933,15 @@ Ficamos no aguardo do retorno.</textarea></div>
   const GDRIVE_LAST_SYNC_KEY = 'gdrive-last-sync-at';
 
   function gdriveSyncStatus(msg){
+    // Atualiza as duas caixinhas de status: a da barra de ferramentas (gdrive-sync-status) e a
+    // de dentro do menu ☁ Google Drive (gdrive-modal-status). Antes só a primeira era
+    // atualizada, então clicar em "Sincronizar agora" dentro do menu ficava preso na mensagem
+    // "Sincronizando..." pra sempre, mesmo quando o resultado real (sucesso ou erro) já tinha
+    // chegado — só não aparecia porque estava na caixinha errada.
     const el = document.getElementById('gdrive-sync-status');
     if(el) el.textContent = msg;
+    const modalEl = document.getElementById('gdrive-modal-status');
+    if(modalEl) modalEl.textContent = msg;
   }
   async function findOrCacheDataFileId(token, folderId){
     const cached = localStorage.getItem(GDRIVE_DATA_FILE_ID_KEY);
