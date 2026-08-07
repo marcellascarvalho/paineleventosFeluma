@@ -1,0 +1,40 @@
+{
+  "evento-nome": "X Mostra de Saúde Coletiva",
+  "evento-data-inicio": "09/09/2026",
+  "evento-data-fim": "10/09/2026",
+  "evento-horario-inicio": "07:00",
+  "evento-horario-fim": "21:00",
+  "evento-local": "Teatro Feluma",
+  "evento-responsavel": "Marcella Carvalho",
+  "evento-tipo": "Acadêmico",
+  "evento-publico": "382",
+  "evento-montagem": "09/09/2026",
+  "evento-followup": "",
+  "ac-rows": [
+    {
+      "id": "ac-1",
+      "tipo": "Orçamentos",
+      "tarefa": "Orçar com fornecedores os serviços e produtos para o evento",
+      "fornecedor": "Diversos",
+      "contato": "",
+      "responsavel": "",
+      "status": "progress",
+      "inicio": "",
+      "termino": "",
+      "obs": ""
+    }
+  ],
+  "ac-counter": 1,
+  "orc-rows": [
+    { "id": "orc-1", "item": "Brigadista", "fornecedor": "Brigada Camarão", "email": "", "estimado": "1620", "cotado": "1620", "status": "attention" },
+    { "id": "orc-2", "item": "Backdrop", "fornecedor": "Plotacad", "email": "", "estimado": "1700", "cotado": "1700", "status": "attention" },
+    { "id": "orc-3", "item": "Credenciais", "fornecedor": "Soft Informática", "email": "", "estimado": "3425", "cotado": "3425", "status": "attention" },
+    { "id": "orc-4", "item": "Rádios Comunicadores", "fornecedor": "Tecsol", "email": "", "estimado": "1520", "cotado": "1520", "status": "attention" },
+    { "id": "orc-5", "item": "Botton", "fornecedor": "", "email": "", "estimado": "0", "cotado": "0", "status": "progress" },
+    { "id": "orc-6", "item": "TVs", "fornecedor": "", "email": "", "estimado": "0", "cotado": "0", "status": "progress" },
+    { "id": "orc-7", "item": "Intérprete de Libras", "fornecedor": "", "email": "", "estimado": "0", "cotado": "0", "status": "progress" },
+    { "id": "orc-8", "item": "Buffet", "fornecedor": "", "email": "", "estimado": "0", "cotado": "0", "status": "pending" },
+    { "id": "orc-9", "item": "Livro", "fornecedor": "", "email": "", "estimado": "0", "cotado": "0", "status": "pending" }
+  ],
+  "orc-counter": 9
+}
