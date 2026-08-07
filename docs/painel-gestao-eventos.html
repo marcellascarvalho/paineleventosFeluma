@@ -609,9 +609,10 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
   <button class="tbtn" id="btn-import-trigger">⬆ Importar backup</button>
   <input type="file" id="file-import" accept="application/json">
   <button class="tbtn primary" id="btn-pdf">📄 Baixar relatório em PDF</button>
-  <button class="tbtn" id="btn-gdrive-config" title="Configurar envio automático para o Google Drive">☁ Google Drive</button>
+  <button class="tbtn" id="btn-gdrive-config" title="Configurar sincronização automática com o Google Drive">☁ Google Drive</button>
   <button class="tbtn" id="btn-archive" title="Ver eventos arquivados anteriormente">🗂 Eventos salvos</button>
   <span id="pdf-status" style="font-size:.72rem; color:#9fabc4;"></span>
+  <span id="gdrive-sync-status" style="font-size:.72rem; color:#9fabc4;"></span>
   <button class="tbtn danger" id="btn-reset">Limpar tudo</button>
   <div class="progress-mini">
     <span>Checklist geral: <span id="progress-text">0/0</span></span>
@@ -830,8 +831,8 @@ Ficamos no aguardo do retorno.</textarea></div>
 <!-- ===== CONFIGURAÇÃO GOOGLE DRIVE ===== -->
 <div class="modal-overlay hidden" id="gdrive-modal">
   <div class="modal-box">
-    <h3>Salvar PDF automaticamente no Google Drive</h3>
-    <p>Ao clicar em "Baixar relatório em PDF", além do download, o painel também envia uma cópia para a pasta do Drive configurada abaixo. É necessário um Client ID OAuth do Google Cloud autorizado para o endereço onde este painel está hospedado (não funciona abrindo o arquivo direto do computador, só em http/https).</p>
+    <h3>Sincronizar com o Google Drive</h3>
+    <p>Com isso configurado, o preenchimento do painel (evento atual + histórico de "Eventos salvos") fica sincronizado automaticamente com um arquivo na pasta do Drive abaixo — abrindo esta mesma URL em qualquer computador ou celular e entrando com a mesma conta Google, os dados são carregados sozinhos, sem precisar exportar/importar JSON. Ao clicar em "Baixar relatório em PDF" também é enviada uma cópia do PDF pra essa pasta. É necessário um Client ID OAuth do Google Cloud autorizado para o endereço onde este painel está hospedado (não funciona abrindo o arquivo direto do computador, só em http/https). Se você editar em dois aparelhos ao mesmo tempo sem sincronizar entre eles, a última alteração salva é que prevalece.</p>
     <div class="field-row">
       <label>Client ID OAuth (Google Cloud Console)</label>
       <input class="field-input" type="text" id="gdrive-client-id" placeholder="xxxxxxxxxx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com">
@@ -843,6 +844,7 @@ Ficamos no aguardo do retorno.</textarea></div>
     <div class="gdrive-status-line" id="gdrive-modal-status"></div>
     <div class="modal-actions">
       <button class="tbtn" id="gdrive-modal-switch-account" title="Force a escolha de conta Google na próxima autorização">Trocar conta Google</button>
+      <button class="tbtn" id="gdrive-modal-sync-now" title="Buscar/enviar dados no Drive agora">🔄 Sincronizar agora</button>
       <button class="tbtn" id="gdrive-modal-cancel">Fechar</button>
       <button class="tbtn primary" id="gdrive-modal-save">Salvar configuração</button>
     </div>
@@ -887,6 +889,13 @@ Ficamos no aguardo do retorno.</textarea></div>
 <script>
 (function(){
   const STORE_KEY = 'painel_gestao_eventos_v1'; // TROCAR por chave única por evento, ex: 'evento_colacao_2026_v1'
+  // Config do Google Drive precisa existir cedo: setupChecklist()/persistKit() já chamam saveStore()
+  // durante a inicialização, e saveStore() aciona scheduleGdrivePush() -> gdriveConfig() e as variáveis abaixo.
+  const GDRIVE_CLIENT_KEY = 'gdrive-client-id';
+  const GDRIVE_FOLDER_KEY = 'gdrive-folder-id';
+  let gdrivePushTimer = null;
+  let gdrivePushInFlight = false;
+  let gdrivePushPending = false;
 
   function loadStore(){
     try{ return JSON.parse(localStorage.getItem(STORE_KEY) || '{}'); }
@@ -900,6 +909,7 @@ Ficamos no aguardo do retorno.</textarea></div>
       clearTimeout(window.__saveTimer);
       window.__saveTimer = setTimeout(()=>{ label.textContent = 'Preenchimento salvo neste navegador'; }, 1500);
     }
+    scheduleGdrivePush();
   }
 
   let store = loadStore();
@@ -1143,6 +1153,7 @@ Ficamos no aguardo do retorno.</textarea></div>
   }
   function saveArchive(list){
     try{ localStorage.setItem(ARCHIVE_KEY, JSON.stringify(list)); }catch(e){}
+    scheduleGdrivePush();
   }
   function archiveCurrentEvent(){
     const list = loadArchive();
@@ -1220,7 +1231,7 @@ Ficamos no aguardo do retorno.</textarea></div>
     const resetBtn = document.getElementById('btn-reset');
     const resetDefaultLabel = resetBtn.textContent;
     let resetArmed = false;
-    resetBtn.addEventListener('click', ()=>{
+    resetBtn.addEventListener('click', async ()=>{
       if(!resetArmed){
         resetArmed = true;
         resetBtn.textContent = 'Clique de novo p/ confirmar';
@@ -1234,6 +1245,8 @@ Ficamos no aguardo do retorno.</textarea></div>
       archiveCurrentEvent();
       store = {};
       try{ localStorage.removeItem(STORE_KEY); }catch(e){}
+      clearTimeout(gdrivePushTimer);
+      await gdrivePush();
       location.reload();
     });
   })();
@@ -1751,8 +1764,6 @@ Ficamos no aguardo do retorno.</textarea></div>
   }
 
   // ===================== GOOGLE DRIVE (envio automático do PDF) =====================
-  const GDRIVE_CLIENT_KEY = 'gdrive-client-id';
-  const GDRIVE_FOLDER_KEY = 'gdrive-folder-id';
   const GDRIVE_TOKEN_CACHE_KEY = 'gdrive-token-cache';
   let gdriveTokenClient = null;
   let gdriveForceAccountPicker = false;
@@ -1840,6 +1851,116 @@ Ficamos no aguardo do retorno.</textarea></div>
     return res.json();
   }
 
+  // ===================== SINCRONIZAÇÃO DE DADOS COM O DRIVE (acessar de qualquer aparelho) =====================
+  const GDRIVE_DATA_FILE_NAME = 'painel-dados-eventos.json';
+  const GDRIVE_DATA_FILE_ID_KEY = 'gdrive-data-file-id';
+  const GDRIVE_LAST_SYNC_KEY = 'gdrive-last-sync-at';
+
+  function gdriveSyncStatus(msg){
+    const el = document.getElementById('gdrive-sync-status');
+    if(el) el.textContent = msg;
+  }
+  async function findOrCacheDataFileId(token, folderId){
+    const cached = localStorage.getItem(GDRIVE_DATA_FILE_ID_KEY);
+    if(cached) return cached;
+    let q = "name='"+GDRIVE_DATA_FILE_NAME+"' and trashed=false";
+    if(folderId) q += " and '"+folderId+"' in parents";
+    const res = await fetch('https://www.googleapis.com/drive/v3/files?q='+encodeURIComponent(q)+'&fields=files(id,name)', {
+      headers: { Authorization: 'Bearer ' + token }
+    });
+    if(!res.ok) throw new Error('Falha ao procurar dados no Drive (HTTP '+res.status+')');
+    const json = await res.json();
+    if(json.files && json.files.length){
+      localStorage.setItem(GDRIVE_DATA_FILE_ID_KEY, json.files[0].id);
+      return json.files[0].id;
+    }
+    return null;
+  }
+  async function createDataFile(token, folderId, payload){
+    const metadata = { name: GDRIVE_DATA_FILE_NAME };
+    if(folderId) metadata.parents = [folderId];
+    const form = new FormData();
+    form.append('metadata', new Blob([JSON.stringify(metadata)], {type:'application/json'}));
+    form.append('file', new Blob([JSON.stringify(payload)], {type:'application/json'}));
+    const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
+      method: 'POST', headers: { Authorization: 'Bearer ' + token }, body: form
+    });
+    if(!res.ok) throw new Error('Falha ao criar arquivo de dados no Drive (HTTP '+res.status+')');
+    const json = await res.json();
+    localStorage.setItem(GDRIVE_DATA_FILE_ID_KEY, json.id);
+    return json.id;
+  }
+  async function updateDataFile(token, fileId, payload){
+    const res = await fetch('https://www.googleapis.com/upload/drive/v3/files/'+fileId+'?uploadType=media', {
+      method: 'PATCH',
+      headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if(!res.ok) throw new Error('Falha ao atualizar dados no Drive (HTTP '+res.status+')');
+  }
+  async function downloadDataFile(token, fileId){
+    const res = await fetch('https://www.googleapis.com/drive/v3/files/'+fileId+'?alt=media', {
+      headers: { Authorization: 'Bearer ' + token }
+    });
+    if(!res.ok) throw new Error('Falha ao baixar dados do Drive (HTTP '+res.status+')');
+    return res.json();
+  }
+  async function gdrivePush(){
+    const cfg = gdriveConfig();
+    if(!cfg.clientId || !gdriveIsHosted()) return;
+    if(gdrivePushInFlight){ gdrivePushPending = true; return; }
+    gdrivePushInFlight = true;
+    try{
+      gdriveSyncStatus('Sincronizando com o Drive...');
+      const token = await getGDriveAccessToken(cfg.clientId);
+      let fileId = await findOrCacheDataFileId(token, cfg.folderId);
+      const payload = { savedAt: new Date().toISOString(), store: store, archive: loadArchive() };
+      if(!fileId){
+        fileId = await createDataFile(token, cfg.folderId, payload);
+      } else {
+        await updateDataFile(token, fileId, payload);
+      }
+      localStorage.setItem(GDRIVE_LAST_SYNC_KEY, payload.savedAt);
+      gdriveSyncStatus('Sincronizado com o Drive às ' + new Date(payload.savedAt).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));
+    }catch(err){
+      console.error(err);
+      gdriveSyncStatus('Falha ao sincronizar com o Drive: ' + (err.message||'erro desconhecido'));
+    }finally{
+      gdrivePushInFlight = false;
+      if(gdrivePushPending){ gdrivePushPending = false; gdrivePush(); }
+    }
+  }
+  function scheduleGdrivePush(){
+    const cfg = gdriveConfig();
+    if(!cfg.clientId || !gdriveIsHosted()) return;
+    clearTimeout(gdrivePushTimer);
+    gdrivePushTimer = setTimeout(gdrivePush, 4000);
+  }
+  async function gdrivePullIfNewer(){
+    const cfg = gdriveConfig();
+    if(!cfg.clientId || !gdriveIsHosted()) return;
+    try{
+      gdriveSyncStatus('Verificando dados no Drive...');
+      const token = await getGDriveAccessToken(cfg.clientId);
+      const fileId = await findOrCacheDataFileId(token, cfg.folderId);
+      if(!fileId){ gdriveSyncStatus(''); return; }
+      const remote = await downloadDataFile(token, fileId);
+      const localLastSync = localStorage.getItem(GDRIVE_LAST_SYNC_KEY) || '';
+      if(remote && remote.savedAt && remote.savedAt > localLastSync){
+        localStorage.setItem(STORE_KEY, JSON.stringify(remote.store||{}));
+        localStorage.setItem(ARCHIVE_KEY, JSON.stringify(remote.archive||[]));
+        localStorage.setItem(GDRIVE_LAST_SYNC_KEY, remote.savedAt);
+        location.reload();
+        return;
+      }
+      gdriveSyncStatus('Dados sincronizados com o Drive.');
+    }catch(err){
+      console.error(err);
+      gdriveSyncStatus('Não foi possível verificar dados no Drive: ' + (err.message||'erro desconhecido'));
+    }
+  }
+  gdrivePullIfNewer();
+
   document.getElementById('btn-gdrive-config').addEventListener('click', ()=>{
     const cfg = gdriveConfig();
     document.getElementById('gdrive-client-id').value = cfg.clientId;
@@ -1857,11 +1978,17 @@ Ficamos no aguardo do retorno.</textarea></div>
     gdriveForceAccountPicker = true;
     document.getElementById('gdrive-modal-status').textContent = 'Pronto: na próxima vez que clicar em "Baixar relatório em PDF", o Google vai pedir para escolher a conta novamente.';
   });
+  document.getElementById('gdrive-modal-sync-now').addEventListener('click', ()=>{
+    document.getElementById('gdrive-modal-status').textContent = 'Sincronizando...';
+    gdrivePullIfNewer();
+  });
   document.getElementById('gdrive-modal-save').addEventListener('click', ()=>{
     localStorage.setItem(GDRIVE_CLIENT_KEY, document.getElementById('gdrive-client-id').value.trim());
     localStorage.setItem(GDRIVE_FOLDER_KEY, document.getElementById('gdrive-folder-id').value.trim());
     clearCachedToken();
+    localStorage.removeItem(GDRIVE_DATA_FILE_ID_KEY);
     document.getElementById('gdrive-modal-status').textContent = 'Configuração salva neste navegador.';
+    gdrivePullIfNewer();
   });
 
   async function generatePdf(){
