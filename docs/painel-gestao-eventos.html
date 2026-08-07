@@ -859,6 +859,8 @@ Ficamos no aguardo do retorno.</textarea></div>
     <div id="archive-list"></div>
     <div class="modal-actions">
       <button class="tbtn" id="archive-modal-save-now">💾 Salvar cópia deste evento agora</button>
+      <button class="tbtn" id="archive-modal-import-trigger">⬆ Importar lista de eventos (JSON)</button>
+      <input type="file" id="archive-file-import" accept="application/json" style="display:none;">
       <button class="tbtn" id="archive-modal-cancel">Fechar</button>
     </div>
   </div>
@@ -1242,6 +1244,39 @@ Ficamos no aguardo do retorno.</textarea></div>
   document.getElementById('archive-modal-save-now').addEventListener('click', ()=>{
     archiveCurrentEvent();
     renderArchiveList();
+  });
+
+  // Importa uma lista de eventos em lote (ex.: gerada a partir da planilha de controle),
+  // no mesmo formato usado pelo arquivo/histórico ("Eventos salvos"). Cada item com o mesmo
+  // id de um já existente é atualizado; os demais são acrescentados à lista.
+  const archiveFileInput = document.getElementById('archive-file-import');
+  document.getElementById('archive-modal-import-trigger').addEventListener('click', ()=> archiveFileInput.click());
+  archiveFileInput.addEventListener('change', (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      try{
+        const parsed = JSON.parse(reader.result);
+        const incoming = Array.isArray(parsed) ? parsed : (Array.isArray(parsed.archive) ? parsed.archive : null);
+        if(!incoming) throw new Error('formato inesperado');
+        const list = loadArchive();
+        let added = 0, updated = 0;
+        incoming.forEach(snap=>{
+          if(!snap || !snap.id || !snap.data) return;
+          const idx = list.findIndex(s => s.id === snap.id);
+          if(idx !== -1){ list[idx] = snap; updated++; }
+          else { list.push(snap); added++; }
+        });
+        saveArchive(list);
+        renderArchiveList();
+        alert('Importação concluída: '+added+' evento(s) novo(s), '+updated+' atualizado(s).');
+      }catch(err){
+        alert('Não foi possível ler este arquivo. Verifique se é um .json de lista de eventos gerado para este painel.');
+      }
+      archiveFileInput.value = '';
+    };
+    reader.readAsText(file);
   });
 
   // Reset — arquiva o evento atual antes de limpar, e usa confirmação em dois cliques
